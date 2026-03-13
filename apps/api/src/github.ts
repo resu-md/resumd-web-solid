@@ -1,15 +1,11 @@
 import { Octokit } from "@octokit/rest";
 import type { BranchInformation, EditorFile, EditorFiles, FilesResponse, RepositoryInformation } from "./types.js";
 import {
-    ApiError,
     type ApiContext,
-    type AuthCookie,
-    COOKIE_AUTH,
-    readSealedCookie,
-    setSealedCookie,
-    statusOf,
     type RuntimeServices,
 } from "./runtime.js";
+import { ApiError, statusOf } from "./utils.js";
+import { type AuthCookie, COOKIE_AUTH, readSealedCookie, setSealedCookie } from "./cookies.js";
 
 const textDecoder = new TextDecoder();
 const GITHUB_PAGE_SIZE = 100;

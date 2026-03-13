@@ -13,24 +13,32 @@ import {
     requireUserOctokit,
 } from "./github.js";
 import {
+    getRuntime,
+    type ApiContext,
+    type RuntimeBindings,
+    type RuntimeServices,
+} from "./runtime.js";
+import {
+    ensureBranchName,
+    safeReturnTo,
+    statusOf,
     ApiError,
+    requireQueryParam,
+    parseOptionalPositiveIntQuery,
+    parseJsonBody,
+} from "./utils.js";
+import {
     clearCookie,
     COOKIE_AUTH,
     COOKIE_CTX,
     COOKIE_STATE,
-    ensureBranchName,
-    getRuntime,
     randomState,
     readSealedCookie,
-    safeReturnTo,
     setSealedCookie,
-    statusOf,
-    type ApiContext,
     type AuthCookie,
     type AuthFlowContextCookie,
     type CookieState,
-    type RuntimeBindings,
-} from "./runtime.js";
+} from "./cookies.js";
 
 const SaveRepoRequestSchema: z.ZodType<SaveRepoRequest> = z.object({
     targetBranch: z.string().trim().min(1),
@@ -50,54 +58,20 @@ const DEFAULT_PAGE = 1;
 const DEFAULT_PER_PAGE = 100;
 const MAX_PER_PAGE = 100;
 
-function requireQueryParam(c: ApiContext, key: string): string {
-    const value = c.req.query(key)?.trim() ?? "";
-    if (!value) {
-        throw new ApiError(400, `${key} is required`);
-    }
+const app = new Hono<{ Bindings: RuntimeBindings; Variables: { runtime?: RuntimeServices } }>();
 
-    return value;
+function requireRuntime(c: ApiContext): RuntimeServices {
+    const runtime = c.get("runtime");
+    if (!runtime) {
+        throw new ApiError(500, "Internal error (1301)");
+        //  TODO: Log it
+    }
+    return runtime;
 }
-
-function parseOptionalPositiveIntQuery(c: ApiContext, key: string, defaultValue: number, maxValue: number): number {
-    const rawValue = c.req.query(key)?.trim();
-    if (!rawValue) {
-        return defaultValue;
-    }
-
-    const parsed = Number.parseInt(rawValue, 10);
-    if (!Number.isInteger(parsed) || parsed < 1) {
-        throw new ApiError(400, `${key} must be a positive integer`);
-    }
-
-    if (parsed > maxValue) {
-        throw new ApiError(400, `${key} must be <= ${maxValue}`);
-    }
-
-    return parsed;
-}
-
-async function parseJsonBody<T>(c: ApiContext, schema: z.ZodType<T>): Promise<T> {
-    let body: unknown;
-
-    try {
-        body = await c.req.json();
-    } catch {
-        throw new ApiError(400, "Invalid JSON body");
-    }
-
-    const parsed = schema.safeParse(body);
-    if (!parsed.success) {
-        throw new ApiError(400, parsed.error.issues[0]?.message ?? "Invalid request body");
-    }
-
-    return parsed.data;
-}
-
-const app = new Hono<{ Bindings: RuntimeBindings }>();
 
 app.use("/api/*", async (c, next) => {
     const runtime = getRuntime(c);
+    c.set("runtime", runtime);
     const middleware = cors({
         origin: runtime.env.APP_ORIGIN,
         credentials: true,
@@ -110,7 +84,7 @@ app.get("/", (c) => {
 });
 
 app.get("/api/auth/start", async (c) => {
-    const runtime = getRuntime(c);
+    const runtime = requireRuntime(c);
     const returnTo = safeReturnTo(c.req.query("returnTo"), "/");
 
     const flowContext: AuthFlowContextCookie = { returnTo };
@@ -143,7 +117,7 @@ app.get("/api/auth/start", async (c) => {
 });
 
 app.get("/api/auth/callback", async (c) => {
-    const runtime = getRuntime(c);
+    const runtime = requireRuntime(c);
     const code = c.req.query("code")?.trim() ?? "";
     const state = c.req.query("state")?.trim() ?? "";
     const oauthError = c.req.query("error")?.trim();
@@ -188,12 +162,12 @@ app.post("/api/auth/logout", async (c) => {
 });
 
 app.get("/api/auth/manage", async (c) => {
-    const runtime = getRuntime(c);
+    const runtime = requireRuntime(c);
     return c.redirect(runtime.githubInstallationUrl, 302);
 });
 
 app.get("/api/bootstrap", async (c) => {
-    const runtime = getRuntime(c);
+    const runtime = requireRuntime(c);
     const owner = c.req.query("owner")?.trim() ?? "";
     const repo = c.req.query("repo")?.trim() ?? "";
 
@@ -255,7 +229,7 @@ app.get("/api/bootstrap", async (c) => {
 });
 
 app.get("/api/repositories", async (c) => {
-    const runtime = getRuntime(c);
+    const runtime = requireRuntime(c);
     const page = parseOptionalPositiveIntQuery(c, "page", DEFAULT_PAGE, Number.MAX_SAFE_INTEGER);
     const perPage = parseOptionalPositiveIntQuery(c, "perPage", DEFAULT_PER_PAGE, MAX_PER_PAGE);
 
@@ -291,7 +265,7 @@ app.get("/api/repositories", async (c) => {
 });
 
 app.get("/api/files", async (c) => {
-    const runtime = getRuntime(c);
+    const runtime = requireRuntime(c);
     const owner = requireQueryParam(c, "owner");
     const repo = requireQueryParam(c, "repo");
     const branch = ensureBranchName(requireQueryParam(c, "branch"), "branch");
@@ -302,7 +276,7 @@ app.get("/api/files", async (c) => {
 });
 
 app.post("/api/save", async (c) => {
-    const runtime = getRuntime(c);
+    const runtime = requireRuntime(c);
     const owner = requireQueryParam(c, "owner");
     const repo = requireQueryParam(c, "repo");
 
