@@ -4,6 +4,7 @@ import { Octokit } from "@octokit/rest";
 import { env as honoEnv } from "hono/adapter";
 import type { Context } from "hono";
 import { z } from "zod";
+import { log } from "./logger.js";
 
 const EnvSchema = z.object({
     APP_ORIGIN: z.string().url(),
@@ -31,10 +32,43 @@ export type RuntimeServices = {
 
 export type ApiContext = Context<{ Bindings: RuntimeBindings; Variables: { runtime?: RuntimeServices } }>;
 
+export class RuntimeEnvError extends Error {
+    readonly message: string;
+    readonly details?: string;
+
+    constructor(message: string, details?: string) {
+        super(message);
+        this.name = "RuntimeEnvError";
+        this.message = message;
+        this.details = details;
+    }
+}
+
 const runtimeCache = new Map<string, RuntimeServices>();
 
+let envErrorLogged = false;
+export function parseRuntimeEnv(rawEnv: unknown): RuntimeEnv {
+    const parsed = EnvSchema.safeParse(rawEnv);
+    if (!parsed.success) {
+        const details = parsed.error.issues.map((issue) => ({
+            path: issue.path.join("."),
+            message: issue.message,
+        }));
+        if (!envErrorLogged) {
+            log.error("Invalid runtime environment configuration", { issues: details });
+            envErrorLogged = true;
+        }
+        throw new RuntimeEnvError("Invalid runtime environment configuration", JSON.stringify(details));
+    }
+    return parsed.data;
+}
+
+export function assertRuntimeEnvFromProcessEnv(): RuntimeEnv {
+    return parseRuntimeEnv(process.env);
+}
+
 export function getRuntime(c: ApiContext): RuntimeServices {
-    const env = EnvSchema.parse(honoEnv<RuntimeEnv>(c));
+    const env = parseRuntimeEnv(honoEnv<RuntimeEnv>(c));
     const cacheKey = [
         env.APP_ORIGIN,
         env.BACKEND_ORIGIN,

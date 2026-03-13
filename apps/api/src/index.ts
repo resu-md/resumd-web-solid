@@ -14,6 +14,7 @@ import {
 } from "./github.js";
 import {
     getRuntime,
+    RuntimeEnvError,
     type ApiContext,
     type RuntimeBindings,
     type RuntimeServices,
@@ -62,25 +63,27 @@ const app = new Hono<{ Bindings: RuntimeBindings; Variables: { runtime?: Runtime
 
 function requireRuntime(c: ApiContext): RuntimeServices {
     const runtime = c.get("runtime");
-    if (!runtime) {
-        throw new ApiError(500, "Internal error (1301)");
-        //  TODO: Log it
-    }
+    if (!runtime) throw new ApiError(500, "Internal error (1301)");
     return runtime;
 }
 
-app.use("/api/*", async (c, next) => {
+app.use("*", async (c, next) => {
     const runtime = getRuntime(c);
     c.set("runtime", runtime);
+    return next();
+});
+
+app.get("/", (c) => {
+    return c.json({ ok: true });
+});
+
+app.use("/api/*", async (c, next) => {
+    const runtime = requireRuntime(c);
     const middleware = cors({
         origin: runtime.env.APP_ORIGIN,
         credentials: true,
     });
     return middleware(c, next);
-});
-
-app.get("/", (c) => {
-    return c.json({ ok: true });
 });
 
 app.get("/api/auth/start", async (c) => {
@@ -396,6 +399,10 @@ app.post("/api/save", async (c) => {
 app.notFound((c) => c.json({ error: "Not found" }, 404));
 
 app.onError((error, c) => {
+    if (error instanceof RuntimeEnvError) {
+        return c.json("Internal server error (CODE: 1301)", 500);
+    }
+
     if (error instanceof ApiError) {
         if (error.status === 401) {
             return c.body(null, 401);
