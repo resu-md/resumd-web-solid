@@ -1,36 +1,27 @@
-import { createEffect, createMemo, For, Show } from "solid-js";
+import { createEffect, For, Show } from "solid-js";
 import { Title } from "@solidjs/meta";
 import { formatDocumentTitle } from "@/lib/document-title";
 // Contexts
-import { login, useGithub } from "@/contexts/github/GithubContext";
+import { useGithubAuth } from "@/contexts/github/GithubContext";
+import { manageRepositories, useGithubRepositories } from "@/contexts/github/useGithubRepositories";
 // Components
 import { useNavigate } from "@solidjs/router";
 import { FiChevronRight, FiExternalLink } from "solid-icons/fi";
 import { IoLogOutOutline } from "solid-icons/io";
 
-import { apiFetch, apiUrl } from "@/lib/fetch";
-import type { RepositoriesResponse } from "@resumd/api/types";
-import { useQuery } from "@tanstack/solid-query";
-
 export default function ManageRepositoriesPage() {
-    const { user } = useGithub();
+    const navigate = useNavigate();
+
+    const { user } = useGithubAuth();
 
     createEffect(() => {
         if (user() === null) {
-            login("/manage");
+            navigate("/");
         }
     });
 
     return (
-        <Show
-            when={user()}
-            fallback={
-                // TODO: Improve visually
-                <main class="text-label-secondary flex h-dvh w-dvw items-center justify-center">
-                    Logging in to GitHub...
-                </main>
-            }
-        >
+        <Show when={user()}>
             <ManageRepositoriesContent />
         </Show>
     );
@@ -38,24 +29,8 @@ export default function ManageRepositoriesPage() {
 
 function ManageRepositoriesContent() {
     const navigate = useNavigate();
-    const { logout } = useGithub();
 
-    // TODO: Move this to a context?
-    const repositoriesQuery = useQuery(() => ({
-        queryKey: ["github", "repositories"] as const,
-        queryFn: () => apiFetch<RepositoriesResponse>("/api/repositories"),
-        retry: false,
-        staleTime: 0,
-    }));
-
-    const repositories = createMemo(() => {
-        if (repositoriesQuery.isLoading) return undefined;
-        return repositoriesQuery.data?.repositories.items;
-    });
-
-    createEffect(() => {
-        console.log("repositories():", repositories());
-    });
+    const { repositories } = useGithubRepositories();
 
     return (
         <>
@@ -117,15 +92,13 @@ function ManageRepositoriesContent() {
                         <div class="mx-4 mt-5 flex flex-wrap gap-2">
                             <button
                                 class="proeminent-button grow rounded-full px-4 py-2 text-sm"
-                                onClick={() => {
-                                    window.location.assign(apiUrl("/api/auth/manage"));
-                                }}
+                                onClick={manageRepositories}
                             >
                                 Manage repositories
                             </button>
                             <button
                                 class="button-red grow rounded-full px-4 py-2 text-sm opacity-90"
-                                onClick={() => void logout()}
+                                onClick={() => navigate("/logout")}
                             >
                                 <IoLogOutOutline class="mr-1 inline-block -translate-y-px" />
                                 Logout
@@ -139,7 +112,7 @@ function ManageRepositoriesContent() {
 }
 
 function NoRepositories() {
-    const { logout } = useGithub();
+    const navigate = useNavigate();
 
     // TODO: Maybe add user avatar or information to this state, so user can know which account is logged in
     return (
@@ -155,15 +128,13 @@ function NoRepositories() {
                 to any other repositories in your account.
             </p> */}
             <div class="mt-5 flex flex-wrap gap-2">
-                <button
-                    class="proeminent-button grow rounded-full px-4 py-2 text-sm"
-                    onClick={() => {
-                        window.location.assign(apiUrl("/api/auth/manage"));
-                    }}
-                >
+                <button class="proeminent-button grow rounded-full px-4 py-2 text-sm" onClick={manageRepositories}>
                     Add repositories
                 </button>
-                <button class="button-red grow rounded-full px-4 py-2 text-sm opacity-90" onClick={() => void logout()}>
+                <button
+                    class="button-red grow rounded-full px-4 py-2 text-sm opacity-90"
+                    onClick={() => navigate("/logout", { replace: true })}
+                >
                     <IoLogOutOutline class="mr-1 inline-block -translate-y-px" />
                     Logout
                 </button>

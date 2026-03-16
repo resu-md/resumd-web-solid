@@ -1,12 +1,11 @@
 import { Show, createEffect, createMemo, createSignal } from "solid-js";
-import { useNavigate, useParams } from "@solidjs/router";
+import { useLocation, useNavigate, useParams } from "@solidjs/router";
 import { Title } from "@solidjs/meta";
 import { formatDocumentTitle } from "@/lib/document-title";
-import { getLineDiffStats, type DiffStats } from "@/lib/line-diff";
+import { getLineDiffStats } from "@/lib/line-diff";
 import { exportAsPdf } from "@/lib/export-as-pdf";
 import { exportAsZip } from "@/lib/export-as-zip";
 // Contexts
-import { login, useGithub } from "@/contexts/github/GithubContext";
 import { GithubResumeProvider, useGithubResume } from "@/contexts/github/GithubResumeContext";
 // Components
 import MonacoEditor from "@/components/editor/monaco-editor/MonacoEditor";
@@ -19,24 +18,48 @@ import SaveOptionsButton from "@/components/preview/toolbar/SaveOptionsButton";
 import CommitButton from "@/components/preview/toolbar/CommitButton";
 
 import { ApiError } from "@/lib/fetch";
+import { useGithubAuth, useSelectedRepository } from "@/contexts/github/GithubContext";
+import { useCommitFiles } from "@/contexts/github/useGithubCommit";
 
 export default function AuthenticatedEditorPage() {
-    const { user } = useGithub();
+    const navigate = useNavigate();
+    const location = useLocation();
+
+    const { user, login } = useGithubAuth();
+    const { selectedRepository } = useSelectedRepository();
+
+    const shouldRenderEditor = createMemo(() => {
+        if (!user()) return false;
+        return selectedRepository() !== null;
+    });
+
+    const redirectMessage = createMemo(() => {
+        const currentUser = user();
+        if (currentUser === undefined) return "Loading session...";
+        if (currentUser === null) return "Redirecting to login...";
+        if (selectedRepository() === null) return "Redirecting to manage...";
+        return "Loading repository...";
+    });
 
     createEffect(() => {
         if (user() === null) {
-            login(`${window.location.pathname}${window.location.search}`);
+            login(location.pathname + location.search); // User is logged out, attempt a login
+        }
+    });
+
+    createEffect(() => {
+        if (user() && selectedRepository() === null) {
+            navigate("/manage", { replace: true });
         }
     });
 
     return (
         <Show
-            when={user()} // Loads page optimistically
+            when={shouldRenderEditor()}
             fallback={
-                // TODO: Improve visually
-                <main class="text-label-secondary flex h-dvh w-dvw items-center justify-center">
-                    Logging in to GitHub...
-                </main>
+                <div class="text-label-secondary flex h-dvh w-dvw items-center justify-center gap-2">
+                    {redirectMessage()}
+                </div>
             }
         >
             <GithubResumeProvider>
@@ -49,49 +72,37 @@ export default function AuthenticatedEditorPage() {
 // TODO: Needs some good refactoring
 function AuthenticatedEditor() {
     const navigate = useNavigate();
-    const [diffMode, setDiffMode] = createSignal(false);
     const params = useParams<{ owner: string; repo: string }>();
-    const { remoteMarkdown, remoteCss, blockEditor, selectedRepository, selectedBranch, logout } = useGithub();
+
+    const { selectedBranch } = useSelectedRepository();
     const {
         markdown: draftMarkdown,
         css: draftCss,
         setMarkdown: setDraftMarkdown,
         setCss: setDraftCss,
         clearDraft,
-        isCommitting,
-        commit,
     } = useGithubResume();
+    const { commit, isCommitting } = useCommitFiles();
 
-    const title = createMemo(() => {
-        const repository = selectedRepository();
-        const branch = selectedBranch();
-        const routeRepository = [params.owner, params.repo].filter(Boolean).join("/");
-        const repositoryLabel = repository?.fullName ?? (routeRepository || "Repository");
-        const workspaceLabel = branch ? `${branch.name} · ${repositoryLabel}` : repositoryLabel;
-        return formatDocumentTitle(workspaceLabel);
+    const [diffMode, setDiffMode] = createSignal(false);
+
+    const tabTitle = createMemo(() => {
+        const formatedRoute = [params.owner, params.repo].filter(Boolean).join("/");
+        const branch = selectedBranch.information();
+        return formatDocumentTitle(branch ? `${branch.name} · ${formatedRoute}` : formatedRoute);
     });
-
-    const isEditorBlocked = createMemo(() => blockEditor() || isCommitting());
-
-    const remoteMarkdownValue = createMemo(() => remoteMarkdown() ?? "");
-    const remoteCssValue = createMemo(() => remoteCss() ?? "");
-
-    const hasChanges = createMemo(() => {
-        if (isEditorBlocked()) return false;
-        return draftMarkdown() !== remoteMarkdownValue() || draftCss() !== remoteCssValue();
+    const remoteMarkdown = () => selectedBranch.files.markdown()?.content ?? "";
+    const remoteCss = () => selectedBranch.files.css()?.content ?? "";
+    const blockEditor = () => selectedBranch.files.loading() || isCommitting(); // TODO: Move logic to context?
+    const hasDiff = createMemo(() => {
+        // if (selectedBranch.files.loading()) return false;
+        return draftMarkdown() !== remoteMarkdown() || draftCss() !== remoteCss();
     });
+    const diffStats = createMemo(() => {
+        if (!hasDiff()) return { added: 0, removed: 0 };
 
-    createEffect(() => {
-        if (!hasChanges() && diffMode()) {
-            setDiffMode(false);
-        }
-    });
-
-    const diffStats = createMemo<DiffStats>(() => {
-        if (!hasChanges()) return { added: 0, removed: 0 };
-
-        const markdownDiff = getLineDiffStats(remoteMarkdownValue(), draftMarkdown());
-        const cssDiff = getLineDiffStats(remoteCssValue(), draftCss());
+        const markdownDiff = getLineDiffStats(remoteMarkdown(), draftMarkdown());
+        const cssDiff = getLineDiffStats(remoteCss(), draftCss());
 
         return {
             added: markdownDiff.added + cssDiff.added,
@@ -100,40 +111,50 @@ function AuthenticatedEditor() {
     });
 
     const handleUndo = () => {
-        if (isEditorBlocked()) return;
+        if (blockEditor()) return;
         clearDraft();
         setDiffMode(false);
     };
 
     const handleMarkdownChange = (value: string) => {
-        if (isEditorBlocked()) return;
+        if (blockEditor()) return;
         setDraftMarkdown(value);
     };
 
     const handleCssChange = (value: string) => {
-        if (isEditorBlocked()) return;
+        if (blockEditor()) return;
         setDraftCss(value);
     };
 
     const handleCommit = async (message?: string) => {
-        if (isEditorBlocked() || !hasChanges()) return;
+        if (blockEditor() || !hasDiff()) return;
 
         try {
             await commit(message);
             setDiffMode(false);
         } catch (error) {
-            if (error instanceof ApiError && error.status === 401) {
-                login(`${window.location.pathname}${window.location.search}`);
-                return;
-            }
-
             alert(error instanceof ApiError ? error.message : "Failed to commit changes");
         }
     };
 
+    const handleLogout = () => {
+        if (
+            confirm(
+                "Sign out?\nYour changes will be kept saved in this browser and will be available when you log back in.",
+            )
+        )
+            navigate("/logout");
+    };
+
+    createEffect(() => {
+        if (!hasDiff() && diffMode()) {
+            setDiffMode(false);
+        }
+    });
+
     return (
         <>
-            <Title>{title()}</Title>
+            <Title>{tabTitle()}</Title>
             <main class="bg-system-secondary flex h-dvh w-dvw">
                 <EditorShell tabs={["resume.md", "theme.css"]}>
                     {(activeTab) =>
@@ -141,7 +162,7 @@ function AuthenticatedEditor() {
                             <MonacoEditor
                                 class="size-full"
                                 activeTabId={activeTab()}
-                                readOnly={isEditorBlocked()}
+                                readOnly={blockEditor()}
                                 tabs={[
                                     {
                                         id: "resume.md",
@@ -165,13 +186,13 @@ function AuthenticatedEditor() {
                                     {
                                         id: "resume.md",
                                         language: "markdown",
-                                        originalValue: remoteMarkdownValue(),
+                                        originalValue: remoteMarkdown(),
                                         modifiedValue: draftMarkdown(),
                                     },
                                     {
                                         id: "theme.css",
                                         language: "css",
-                                        originalValue: remoteCssValue(),
+                                        originalValue: remoteCss(),
                                         modifiedValue: draftCss(),
                                     },
                                 ]}
@@ -186,13 +207,13 @@ function AuthenticatedEditor() {
                                 leading={
                                     <>
                                         <GithubBranchDropdown />
-                                        <Show when={!isEditorBlocked() && hasChanges()}>
+                                        {/* TODO: Implement proper loading state handling */}
+                                        <Show when={!blockEditor() && hasDiff()}>
                                             <CommitButton
                                                 initialShowDiff={diffMode()}
-                                                hasChanges={hasChanges()}
                                                 isCommitting={isCommitting()}
                                                 diffStats={diffStats()}
-                                                onShowDiffChange={(show) => setDiffMode(show && hasChanges())}
+                                                onShowDiffChange={(show) => setDiffMode(show && hasDiff())}
                                                 onUndo={handleUndo}
                                                 onCommit={(message) => {
                                                     void handleCommit(message);
@@ -210,14 +231,7 @@ function AuthenticatedEditor() {
                                             })
                                         }
                                         onManageRepositories={() => navigate("/manage")}
-                                        onLogout={() => {
-                                            if (
-                                                confirm(
-                                                    "Sign out?\nYour changes will be kept saved in this browser and will be available when you log back in.",
-                                                )
-                                            )
-                                                logout();
-                                        }}
+                                        onLogout={handleLogout}
                                     />
                                 }
                             />
@@ -228,3 +242,12 @@ function AuthenticatedEditor() {
         </>
     );
 }
+
+// function formatAuthenticatedEditorTabTitle() {
+// const repository = selectedRepository();
+// const branch = selectedBranch.information();
+// const routeRepository = [params.owner, params.repo].filter(Boolean).join("/");
+// const repositoryLabel = repository?.fullName ?? (routeRepository || "Repository");
+// const workspaceLabel = branch ? `${branch.name} · ${repositoryLabel}` : repositoryLabel;
+// return formatDocumentTitle(workspaceLabel);
+// }

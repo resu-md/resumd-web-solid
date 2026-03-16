@@ -3,7 +3,7 @@ import { useNavigate } from "@solidjs/router";
 import { exportAsPdf } from "@/lib/export-as-pdf";
 import { exportAsZip } from "@/lib/export-as-zip";
 // Contexts
-import { useGithub } from "@/contexts/github/GithubContext";
+import { useGithubAuth } from "@/contexts/github/GithubContext";
 import { AnonymousResumeProvider, useAnonymousResume } from "@/contexts/AnonymousResumeContext";
 // Components
 import MonacoEditor from "@/components/editor/monaco-editor/MonacoEditor";
@@ -13,12 +13,12 @@ import ToolbarShell from "@/components/preview/toolbar/ToolbarShell";
 import SaveOptionsButton from "@/components/preview/toolbar/SaveOptionsButton";
 
 export default function AnonymousEditorPage() {
-    const { user } = useGithub();
+    const { user } = useGithubAuth();
     const navigate = useNavigate();
 
     createEffect(() => {
         if (user()) {
-            navigate("/manage", { replace: true });
+            navigate("/manage", { replace: true }); // TODO: Redirect to last repository
         }
     });
 

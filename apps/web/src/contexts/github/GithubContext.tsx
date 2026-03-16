@@ -1,55 +1,72 @@
 import { createContext, createEffect, createMemo, useContext, type Accessor, type JSXElement } from "solid-js";
 import type {
-    GithubUser,
     BootstrapResponse,
     BranchInformation,
-    RepositoryInformation,
+    EditorFiles,
     FilesResponse,
+    GithubUser,
+    RepositoryInformation,
 } from "@resumd/api/types";
 import { useQuery } from "@tanstack/solid-query";
-import { ApiError, apiFetch, apiUrl, withSearch } from "@/lib/fetch";
-import { useNavigate, useParams, useSearchParams } from "@solidjs/router";
+import { apiFetch, apiUrl, withSearch } from "@/lib/fetch";
+import { useParams, useSearchParams } from "@solidjs/router";
 import queryClient, { clearPersistedQueryClient } from "@/lib/query-client";
 
-const GithubContext = createContext<{
+type FileInformation = {
+    workspaceKey: string;
+    files: EditorFiles;
+    commitSha: string | undefined;
+};
+
+const GithubAuthContext = createContext<{
+    /**
+     * undefined: no cached user, fetching from remote
+     * null: no user (not logged in)
+     * GithubUser: logged in user
+     */
     user: Accessor<GithubUser | null | undefined>;
-    selectedRepository: Accessor<RepositoryInformation | null>;
-    branches: Accessor<BranchInformation[]>;
-    selectedBranch: Accessor<BranchInformation | null>;
-    isReloadingBranches: Accessor<boolean>;
-    reloadBranches: () => Promise<void>;
-    setSelectedBranch: (branch: BranchInformation) => void;
-    remoteMarkdown: Accessor<string | null>;
-    remoteMarkdownPath: Accessor<string | null>;
-    remoteCss: Accessor<string | null>;
-    remoteCssPath: Accessor<string | null>;
-    remoteHeadSha: Accessor<string | undefined>;
-    refetchFiles: () => Promise<void>;
-    blockEditor: Accessor<boolean>;
+    login: (returnTo?: string) => void;
     logout: () => Promise<void>;
 }>();
 
-// TODO: Needs a good refactor
+const SelectedRepositoryContext = createContext<{
+    selectedRepository: Accessor<RepositoryInformation | null | undefined>;
+    // setSelectedRepository: (repository: RepositoryInformation) => void;
+    branches: {
+        items: Accessor<BranchInformation[] | null | undefined>;
+        loading: Accessor<boolean>;
+        refetch: () => void;
+    };
+    selectedBranch: {
+        information: Accessor<BranchInformation | null>;
+        files: {
+            markdown: Accessor<EditorFiles["markdown"] | null | undefined>;
+            css: Accessor<EditorFiles["css"] | null | undefined>;
+            commitSha: Accessor<string | undefined>;
+            loading: Accessor<boolean>;
+            refetch: () => void;
+        };
+    };
+    setSelectedBranch: (branch: BranchInformation) => void;
+}>();
+
+// TODO: error handling of queryfns
+// TODO: handle selectedRepository becoming null
 
 export function GithubProvider(props: { children?: JSXElement }) {
-    const navigate = useNavigate();
     const params = useParams<{ owner: string; repo: string }>();
+    const [searchParams, setSearchParams] = useSearchParams<{ branch?: string }>();
 
-    const normalizeParam = (value: string | undefined) => {
-        const normalized = value?.trim();
-        return normalized ? normalized : undefined;
-    };
+    /**
+     * useGithubAuth
+     */
 
     const routeRepository = createMemo(() => {
-        const owner = normalizeParam(params.owner);
-        const repo = normalizeParam(params.repo);
+        const owner = normalizeRouteParams(params.owner);
+        const repo = normalizeRouteParams(params.repo);
         if (!owner || !repo) return null;
-
         return { owner, repo };
     });
-
-    const [searchParams, setSearchParams] = useSearchParams<{ branch?: string }>();
-    const searchParamsBranch = createMemo(() => searchParams.branch?.trim() || undefined);
 
     const bootstrapQuery = useQuery(() => {
         const repo = routeRepository();
@@ -64,42 +81,61 @@ export function GithubProvider(props: { children?: JSXElement }) {
         };
     });
 
-    createEffect(() => {
-        const repo = routeRepository();
-        if (!repo) return;
-
-        const error = bootstrapQuery.error;
-        if (!(error instanceof ApiError)) return;
-
-        if (error.status === 403 || error.status === 404 || error.status === 409) {
-            navigate("/manage", { replace: true });
-        }
-    });
-
     const user = createMemo(() => {
-        if (bootstrapQuery.isLoading) return undefined;
-
-        // TODO: Needed? Shouldn't it be globally handled by the queryClient?
-        const error = bootstrapQuery.error;
-        if (error instanceof ApiError) {
-            if (error.status === 401) {
-                return null;
-            }
-
-            return undefined;
-        }
-
+        if (bootstrapQuery.isPending) return undefined;
         return bootstrapQuery.data?.user ?? null;
     });
 
-    const selectedRepository = createMemo(() => bootstrapQuery.data?.selected?.repository ?? null);
+    const logout = async () => {
+        await queryClient.cancelQueries();
+        try {
+            await apiFetch("/api/auth/logout", { method: "POST" });
+        } catch (error) {
+            console.error("Logout failed:", error);
+        } finally {
+            clearPersistedQueryClient();
+        }
+    };
 
-    const branches = createMemo(() => bootstrapQuery.data?.selected?.branches.items ?? []);
-    const getFallbackBranch = (branchList: BranchInformation[]) =>
-        branchList.find((branch) => branch.isDefault) ?? branchList[0] ?? null;
+    const login = (returnTo?: string) => {
+        const query = new URLSearchParams();
+        if (returnTo) query.set("returnTo", returnTo);
+        const loginUrl = query.size > 0 ? `/api/auth/start?${query.toString()}` : "/api/auth/start";
+        window.location.assign(apiUrl(loginUrl));
+    };
 
+    /**
+     * useSelectedRepository
+     */
+
+    // Selected repository information
+
+    const selectedRepositoryInformation = createMemo(() => {
+        if (bootstrapQuery.isPending) return undefined;
+        return bootstrapQuery.data?.selected?.repository ?? null;
+    });
+
+    // Selected repository's branches
+
+    const selectedRepositoryBranches = createMemo(() => {
+        if (bootstrapQuery.isPending) return undefined;
+        return bootstrapQuery.data?.selected?.branches.items ?? null;
+    });
+
+    const isBranchesLoading = createMemo(() => bootstrapQuery.isFetching || bootstrapQuery.isPending);
+
+    const refetchBranches = async () => await bootstrapQuery.refetch(); // TODO: what is the consequence of this if selectedRepository changes, current branch gets renamed, etc?
+    createEffect(() => {
+        console.log(isBranchesLoading() ? "Loading branches..." : "Branches loaded");
+    });
+
+    // Selected branch
+
+    const searchParamsBranch = createMemo(() => searchParams.branch?.trim() || undefined);
+
+    // Derived value from the searchParams, matches it when is present, fallback branch otherwise
     const selectedBranch = createMemo(() => {
-        const branchList = branches() ?? [];
+        const branchList = selectedRepositoryBranches() ?? [];
         if (!branchList.length) return null;
 
         const searchBranch = searchParamsBranch();
@@ -111,34 +147,45 @@ export function GithubProvider(props: { children?: JSXElement }) {
         return getFallbackBranch(branchList);
     });
 
-    const isReloadingBranches = createMemo(() => bootstrapQuery.isRefetching);
+    // To update selected branch, we update the URL's ?branch=... param, and the selectedBranch memo will react to it and update accordingly
+    const setSelectedBranch = (branch: BranchInformation) => {
+        setSearchParams({ branch: branch.name } /*, { replace: true }*/);
+    };
 
+    // When ?branch=... changes, updates selectedBranch
     createEffect(() => {
-        const branchFromUrl = searchParamsBranch();
-        if (!branchFromUrl) return;
-
-        const branchList = branches();
+        const branchList = selectedRepositoryBranches();
         if (!branchList?.length) return;
-        if (branchList.some((branch) => branch.name === branchFromUrl)) return;
 
         const fallbackBranch = getFallbackBranch(branchList);
         if (!fallbackBranch) return;
 
-        setSearchParams({ branch: fallbackBranch.name }, { replace: true });
+        const fromUrl = searchParamsBranch();
+        if (!fromUrl || !branchList.some((b) => b.name === fromUrl)) {
+            setSearchParams({ branch: fallbackBranch.name }, { replace: true });
+        }
+
+        // const branchFromUrl = searchParamsBranch();
+        // if (!branchFromUrl) return;
+
+        // const branchList = selectedRepositoryBranches();
+        // if (!branchList?.length) return;
+
+        // // Found exact match, do nothing
+        // if (branchList.some((branch) => branch.name === branchFromUrl)) return;
+
+        // const fallbackBranch = getFallbackBranch(branchList);
+        // if (!fallbackBranch) return; // No branches at all, do nothing
+
+        // setSearchParams({ branch: fallbackBranch.name }, { replace: true }); // Update URL to fallback branch
     });
 
-    const setSelectedBranch = (branch: BranchInformation) => {
-        setSearchParams({ branch: branch.name }, { replace: true });
-    };
+    // Selected branch's files
 
-    const reloadBranches = async () => {
-        await bootstrapQuery.refetch();
-    };
-
-    const filesWorkspace = createMemo(() => {
-        const repo = selectedRepository();
+    // Object if selected repository and branch are resolved, null if not resolved yet
+    const currentWorkspace = createMemo(() => {
+        const repo = selectedRepositoryInformation();
         const branchName = selectedBranch()?.name;
-
         if (!repo || !branchName) return null;
 
         return {
@@ -150,13 +197,13 @@ export function GithubProvider(props: { children?: JSXElement }) {
     });
 
     const filesQuery = useQuery(() => {
-        const workspace = filesWorkspace();
+        const workspace = currentWorkspace();
 
         return {
             queryKey: workspace?.key ?? (["files", null, null, null] as const),
-            enabled: !!workspace,
+            enabled: !!workspace, // Only run query if workspace is resolved (when repository and branch are selected)
             queryFn: async () => {
-                if (!workspace) throw new Error("Repository or branch not resolved");
+                if (!workspace) throw new Error("Repository or branch not resolved"); // TODO: Necessary?
 
                 return apiFetch<FilesResponse>(
                     withSearch("/api/files", {
@@ -170,99 +217,90 @@ export function GithubProvider(props: { children?: JSXElement }) {
         };
     });
 
-    const resolvedFiles = createMemo<{ workspaceKey: string; data: FilesResponse } | null>((previous) => {
-        const workspace = filesWorkspace();
-        if (!workspace) return null;
+    // Files will stay its old value until the new value is resolved, to prevent flashing "no files" state
+    const files = createMemo<FileInformation | null | undefined>((previous) => {
+        const workspace = currentWorkspace();
+        if (!workspace) return null; // No workspace, no files
 
-        const data = filesQuery.data ?? queryClient.getQueryData<FilesResponse>(workspace.key);
-        if (data) {
-            return { workspaceKey: workspace.workspaceKey, data };
+        const data = filesQuery.data;
+
+        if (data)
+            return {
+                workspaceKey: workspace.workspaceKey,
+                files: data.files, // TODO: Maybe files response could only include EditorFiles
+                commitSha: data.branch.commitSha,
+            }; // New data, return it
+
+        return previous; // Still loading, keep previous files
+    });
+    const css = createMemo(() => files()?.files.css);
+    const markdown = createMemo(() => files()?.files.markdown);
+    const commitSha = createMemo(() => files()?.commitSha);
+
+    const isFilesLoading = createMemo(() => {
+        const workspace = currentWorkspace();
+        if (!workspace) {
+            if (selectedRepositoryInformation() === undefined || selectedRepositoryBranches() === undefined)
+                return true;
+            return false;
         }
-
-        return previous ?? null;
-    }, null);
-
-    const blockEditor = createMemo(() => {
-        const workspace = filesWorkspace();
-        if (!workspace) return false;
-
-        return resolvedFiles()?.workspaceKey !== workspace.workspaceKey;
+        return files()?.workspaceKey !== workspace.workspaceKey || filesQuery.isPending; // TODO: isFetching?
     });
 
-    const remoteMarkdown = createMemo(() => resolvedFiles()?.data.files.markdown?.content ?? null);
-    const remoteMarkdownPath = createMemo(() => resolvedFiles()?.data.files.markdown?.path ?? null);
-    const remoteCss = createMemo(() => resolvedFiles()?.data.files.css?.content ?? null);
-    const remoteCssPath = createMemo(() => resolvedFiles()?.data.files.css?.path ?? null);
-    const remoteHeadSha = createMemo(() => resolvedFiles()?.data.branch.commitSha);
-
-    const refetchFiles = async () => {
-        const workspace = filesWorkspace();
-        if (!workspace) return;
-
-        await queryClient.fetchQuery<FilesResponse>({
-            queryKey: [...workspace.key],
-            queryFn: () =>
-                apiFetch<FilesResponse>(
-                    withSearch("/api/files", {
-                        owner: workspace.repo.owner,
-                        repo: workspace.repo.repo,
-                        branch: workspace.branchName,
-                    }),
-                ),
-            staleTime: 0,
-        });
-    };
-
-    const logout = async () => {
-        await queryClient.cancelQueries();
-        try {
-            navigate("/", { replace: true });
-            clearPersistedQueryClient();
-            await apiFetch("/api/auth/logout", { method: "POST" });
-        } catch (error) {
-            console.error("Logout failed:", error);
-        }
-    };
+    const refetchFiles = async () => await filesQuery.refetch();
 
     return (
-        <GithubContext.Provider
+        <GithubAuthContext.Provider
             value={{
                 user,
-                selectedRepository,
-                branches,
-                selectedBranch,
-                isReloadingBranches,
-                reloadBranches,
-                setSelectedBranch,
-                remoteMarkdown,
-                remoteMarkdownPath,
-                remoteCss,
-                remoteCssPath,
-                remoteHeadSha,
-                refetchFiles,
-                blockEditor,
+                login,
                 logout,
             }}
         >
-            {props.children}
-        </GithubContext.Provider>
+            <SelectedRepositoryContext.Provider
+                value={{
+                    selectedRepository: selectedRepositoryInformation,
+                    branches: {
+                        items: selectedRepositoryBranches,
+                        loading: isBranchesLoading,
+                        refetch: refetchBranches,
+                    },
+                    selectedBranch: {
+                        information: selectedBranch,
+                        files: {
+                            css: css,
+                            markdown: markdown,
+                            commitSha: commitSha,
+                            loading: isFilesLoading,
+                            refetch: refetchFiles,
+                        },
+                    },
+                    setSelectedBranch,
+                }}
+            >
+                {props.children}
+            </SelectedRepositoryContext.Provider>
+        </GithubAuthContext.Provider>
     );
 }
 
-export function useGithub() {
-    const context = useContext(GithubContext);
-    if (!context) throw new Error("useGithubContext must be used within a GithubProvider");
+const normalizeRouteParams = (value: string | undefined) => {
+    const normalized = value?.trim();
+    return normalized ? normalized : undefined;
+};
+
+const getFallbackBranch = (branchList: BranchInformation[]) => {
+    return branchList.find((branch) => branch.isDefault) ?? branchList[0] ?? null;
+};
+
+export function useGithubAuth() {
+    const context = useContext(GithubAuthContext);
+    if (!context) throw new Error("useGithubAuth must be used within a GithubAuthProvider");
     return context;
 }
 
-export const login = (returnTo?: string) => {
-    const normalizedReturnTo = returnTo?.trim();
-    const query = new URLSearchParams();
-
-    if (normalizedReturnTo) {
-        query.set("returnTo", normalizedReturnTo);
-    }
-
-    const loginPath = query.size > 0 ? `/api/auth/start?${query.toString()}` : "/api/auth/start";
-    window.location.assign(apiUrl(loginPath));
-};
+export function useSelectedRepository() {
+    const context = useContext(SelectedRepositoryContext);
+    if (!context) throw new Error("useSelectedRepository must be used within a SelectedRepositoryProvider");
+    return context;
+}
