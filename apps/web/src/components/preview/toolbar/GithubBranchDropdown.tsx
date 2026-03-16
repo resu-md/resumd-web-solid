@@ -2,11 +2,12 @@ import clsx from "clsx";
 import { For, Show } from "solid-js";
 import { DropdownMenu } from "@kobalte/core/dropdown-menu";
 import { FiChevronDown, FiGitBranch, FiRefreshCw } from "solid-icons/fi";
-import { useGithub } from "@/contexts/github/GithubContext";
+import { useSelectedRepository } from "@/contexts/github/GithubContext";
+
+// TODO: "duplicate" and "navigate to" buttons with tooltips
 
 export default function GithubBranchDropdown() {
-    const { selectedRepository, branches, selectedBranch, isReloadingBranches, reloadBranches, setSelectedBranch } =
-        useGithub();
+    const { selectedRepository, branches, selectedBranch, setSelectedBranch } = useSelectedRepository();
 
     return (
         <Show when={selectedRepository() !== null}>
@@ -15,10 +16,10 @@ export default function GithubBranchDropdown() {
                     <span class="ml-3 flex items-center">
                         <FiGitBranch class="text-label-secondary mr-1.25" />
                         <Show
-                            when={branches()?.length > 0}
+                            when={branches.items()}
                             fallback={<span class="text-label-tertiary">Select a branch</span>}
                         >
-                            <span class="font-mono">{selectedBranch()?.name}</span>
+                            <span class="font-mono">{selectedBranch.information()?.name}</span>
                         </Show>
                     </span>
                     <FiChevronDown class="text-label-tertiary mr-2 size-5 translate-y-px" />
@@ -36,20 +37,20 @@ export default function GithubBranchDropdown() {
                                 type="button"
                                 class="text-label-tertiary hit-area-x-3 hit-area-y-2 hover:text-label-secondary inline-flex items-center justify-center rounded-full transition-colors"
                                 aria-label="Reload branches"
-                                onClick={() => void reloadBranches()}
-                                disabled={isReloadingBranches()}
+                                onClick={() => void branches.refetch()}
+                                disabled={branches.loading()}
                             >
                                 <FiRefreshCw
                                     class={clsx(
                                         "size-3 transition-transform duration-300",
-                                        isReloadingBranches() && "animate-spin",
+                                        branches.loading() && "animate-spin",
                                     )}
                                 />
                             </button>
                         </div>
                         <div class="flex flex-col gap-0.5 overflow-y-auto">
                             <For
-                                each={branches()}
+                                each={branches.items()}
                                 fallback={
                                     <span class="text-label-tertiary mx-1 flex items-center justify-between px-2.5 pt-0.75 pr-6 pb-0.5 outline-none">
                                         No branches detected
@@ -60,7 +61,7 @@ export default function GithubBranchDropdown() {
                                     <DropdownMenu.Item
                                         class={clsx(
                                             "group mx-1 flex cursor-pointer items-center gap-1.5 rounded-[10px] px-2.5 py-0.75 outline-none",
-                                            selectedBranch()?.name === branch.name
+                                            selectedBranch.information()?.name === branch.name
                                                 ? "bg-linear-to-b from-[#4da3ff] to-[#007aff] text-white shadow-[inset_0_0_1px_1px_#ffffff33,0_2px_20px_#0000000a]"
                                                 : "data-highlighted:bg-fill-tertiary",
                                         )}

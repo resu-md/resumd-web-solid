@@ -1,9 +1,7 @@
-import { createContext, createMemo, createSignal, useContext, type Accessor, type JSXElement } from "solid-js";
+import { createContext, createMemo, useContext, type Accessor, type JSXElement } from "solid-js";
 import { GITHUB_WORKSPACE_STORAGE_KEYS } from "@/lib/storage-keys";
-import { useGithub } from "./GithubContext";
+import { useSelectedRepository } from "./GithubContext";
 import { createDraftablePersistedSignal } from "./createDraftablePersistedSignal";
-import { apiFetch, withSearch } from "@/lib/fetch";
-import type { SaveRepoResponse } from "@resumd/api/types";
 
 type ResumeDoc = {
     markdown: string;
@@ -16,8 +14,6 @@ type GithubResumeContextValue = {
     css: Accessor<string>;
     setCss: (value: string | ((prev: string) => string)) => void;
     clearDraft: () => void;
-    isCommitting: Accessor<boolean>;
-    commit: (message?: string) => Promise<void>;
 };
 
 const GithubResumeContext = createContext<GithubResumeContextValue>();
@@ -25,14 +21,8 @@ const GithubResumeContext = createContext<GithubResumeContextValue>();
 export function GithubResumeProvider(props: { children?: JSXElement }) {
     const {
         selectedRepository,
-        selectedBranch,
-        remoteMarkdown,
-        remoteMarkdownPath,
-        remoteCss,
-        remoteCssPath,
-        remoteHeadSha,
-        refetchFiles,
-    } = useGithub();
+        selectedBranch: { information: selectedBranch, files },
+    } = useSelectedRepository();
 
     const workspaceStorageKey = createMemo(() =>
         selectedBranch() && selectedRepository()
@@ -41,8 +31,8 @@ export function GithubResumeProvider(props: { children?: JSXElement }) {
     );
 
     const getRemoteDoc = (): ResumeDoc => ({
-        markdown: remoteMarkdown() ?? "",
-        css: remoteCss() ?? "",
+        markdown: files.markdown()?.content ?? "",
+        css: files.css()?.content ?? "",
     });
 
     const [doc, setDoc, clearDraft] = createDraftablePersistedSignal<ResumeDoc>({
@@ -69,43 +59,6 @@ export function GithubResumeProvider(props: { children?: JSXElement }) {
         });
     };
 
-    const [isCommitting, setIsCommitting] = createSignal(false);
-
-    const commit = async (message?: string) => {
-        const repository = selectedRepository();
-        const branch = selectedBranch();
-        if (!repository || !branch || isCommitting()) return;
-
-        setIsCommitting(true);
-        try {
-            await apiFetch<SaveRepoResponse>(
-                withSearch("/api/save", { owner: repository.owner, repo: repository.repo }),
-                {
-                    method: "POST",
-                    body: JSON.stringify({
-                        targetBranch: branch.name,
-                        expectedHeadSha: remoteHeadSha() ?? branch.commitSha,
-                        message,
-                        files: {
-                            markdown: doc().markdown,
-                            css: doc().css,
-                            markdownPath: remoteMarkdownPath() ?? "resume.md",
-                            cssPath: remoteCssPath() ?? "resume.css",
-                        },
-                    }),
-                },
-            );
-
-            await refetchFiles();
-
-            if (remoteMarkdown() === doc().markdown && remoteCss() === doc().css) {
-                clearDraft();
-            }
-        } finally {
-            setIsCommitting(false);
-        }
-    };
-
     return (
         <GithubResumeContext.Provider
             value={{
@@ -114,8 +67,6 @@ export function GithubResumeProvider(props: { children?: JSXElement }) {
                 css,
                 setCss,
                 clearDraft,
-                isCommitting,
-                commit,
             }}
         >
             {props.children}

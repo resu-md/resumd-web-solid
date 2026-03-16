@@ -9,6 +9,7 @@ import { ThemeProvider } from "@/contexts/ThemeContext";
 import AuthenticatedEditorPage from "./pages/AuthenticatedEditorPage";
 import ManageRepositoriesPage from "./pages/ManageRepositoriesPage";
 import AnonymousEditorPage from "./pages/AnonymousEditorPage";
+import LogoutPage from "./pages/LogoutPage";
 import { GithubProvider } from "./contexts/github/GithubContext";
 
 export default function App() {
@@ -26,6 +27,7 @@ export default function App() {
                 <Route component={GithubProvider}>
                     <Route path="/" component={AnonymousEditorPage} />
                     <Route path="/manage" component={ManageRepositoriesPage} />
+                    <Route path="/logout" component={LogoutPage} />
                     <Route path="/:owner/:repo" component={AuthenticatedEditorPage} />
                 </Route>
             </Router>
