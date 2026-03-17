@@ -14,13 +14,7 @@ import {
     requireInstallationOctokit,
     requireUserOctokit,
 } from "./github.js";
-import {
-    getRuntime,
-    RuntimeEnvError,
-    type ApiContext,
-    type RuntimeBindings,
-    type RuntimeServices,
-} from "./runtime.js";
+import { getRuntime, RuntimeEnvError, type ApiContext, type RuntimeBindings, type RuntimeServices } from "./runtime.js";
 import { log } from "./logger.js";
 import {
     ensureBranchName,
@@ -112,15 +106,9 @@ app.get("/api/auth/start", async (c) => {
         await userOctokit.rest.users.getAuthenticated();
         return c.redirect(`${runtime.env.APP_ORIGIN}${returnTo}`, 302);
     } catch (error) {
-        const status = statusOf(error);
-
-        if (status === 401) {
-            clearCookie(c, COOKIE_AUTH);
-            const { url } = runtime.oauthApp.getWebFlowAuthorizationUrl({ state });
-            return c.redirect(url, 302);
-        }
-
-        return c.redirect(`${runtime.env.APP_ORIGIN}${returnTo}`, 302);
+        clearCookie(c, COOKIE_AUTH);
+        const { url } = runtime.oauthApp.getWebFlowAuthorizationUrl({ state });
+        return c.redirect(url, 302);
     }
 });
 
