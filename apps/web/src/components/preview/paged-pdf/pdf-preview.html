@@ -74,7 +74,7 @@
                     // We pass the CSS as an "inline" stylesheet to PagedJS.
                     // This ensures PagedJS parses @page rules using its Polisher.
                     // We use a dummy URL or the current location as the key for the object format.
-                    const cssContent = "@page { margin: 0.4in; } " + css;
+                    const cssContent = "@page { margin: 0.4in; }\n" + css + "\n@page { size: letter !important; }"; // TODO: Temp fix to jitter issue
                     const stylesheets = [{ [window.location.href]: cssContent }];
 
                     // 2. Create a new container for this render
