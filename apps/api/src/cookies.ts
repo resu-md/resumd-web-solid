@@ -32,10 +32,25 @@ const textDecoder = new TextDecoder();
 
 const cookieKeyCache = new Map<string, Promise<CryptoKey>>();
 
+function shouldUseCrossSiteCookies(runtime: RuntimeServices): boolean {
+    if (!runtime.isProd) return false;
+
+    try {
+        const appOrigin = new URL(runtime.env.APP_ORIGIN).origin;
+        const backendOrigin = new URL(runtime.env.BACKEND_ORIGIN).origin;
+        return appOrigin !== backendOrigin;
+    } catch {
+        return false;
+    }
+}
+
 function bytesToBase64(bytes: Uint8Array): string {
     const bufferGlobal = globalThis as typeof globalThis & {
         Buffer?: {
-            from: (input: ArrayBuffer | Uint8Array | string, encoding?: string) => {
+            from: (
+                input: ArrayBuffer | Uint8Array | string,
+                encoding?: string,
+            ) => {
                 toString: (encoding?: string) => string;
             };
         };
@@ -74,10 +89,7 @@ function base64ToBytes(base64: string): Uint8Array {
 }
 
 function base64UrlFromBytes(bytes: Uint8Array): string {
-    return bytesToBase64(bytes)
-        .replace(/\+/g, "-")
-        .replace(/\//g, "_")
-        .replace(/=+$/g, "");
+    return bytesToBase64(bytes).replace(/\+/g, "-").replace(/\//g, "_").replace(/=+$/g, "");
 }
 
 function base64UrlToBytes(value: string): Uint8Array {
@@ -148,20 +160,18 @@ export async function setSealedCookie(
     maxAgeSeconds?: number,
 ): Promise<void> {
     const sealed = await sealCookieValue(runtime.env.COOKIE_SECRET, value);
+    const useCrossSiteCookies = shouldUseCrossSiteCookies(runtime);
+
     setCookie(c, name, sealed, {
         path: "/",
         httpOnly: true,
         secure: runtime.isProd,
-        sameSite: "Lax",
+        sameSite: useCrossSiteCookies ? "None" : "Lax",
         maxAge: maxAgeSeconds,
     });
 }
 
-export async function readSealedCookie<T>(
-    c: ApiContext,
-    runtime: RuntimeServices,
-    name: string,
-): Promise<T | null> {
+export async function readSealedCookie<T>(c: ApiContext, runtime: RuntimeServices, name: string): Promise<T | null> {
     const raw = getCookie(c, name);
     if (!raw) {
         return null;
