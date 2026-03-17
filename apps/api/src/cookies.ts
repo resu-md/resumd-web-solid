@@ -14,12 +14,17 @@ export type AuthFlowContextCookie = {
     returnTo: string;
 };
 
+export type AuthInstallContextCookie = {
+    returnTo: string;
+};
+
 export type CookieState = {
     state: string;
 };
 
 export const COOKIE_AUTH = "resumd_gh_auth";
 export const COOKIE_CTX = "resumd_gh_ctx";
+export const COOKIE_INSTALL_CTX = "resumd_gh_install_ctx";
 export const COOKIE_STATE = "resumd_gh_state";
 
 const textEncoder = new TextEncoder();

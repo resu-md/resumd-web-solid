@@ -282,6 +282,15 @@ export async function listInstalledRepos(
     };
 }
 
+export async function hasAuthorizedRepos(runtime: RuntimeServices, octokit: Octokit): Promise<boolean> {
+    const installations = await octokit.rest.apps.listInstallationsForAuthenticatedUser({
+        per_page: GITHUB_PAGE_SIZE,
+        page: 1,
+    });
+
+    return installations.data.installations.some((installation) => installation.app_slug === runtime.env.GITHUB_APP_SLUG);
+}
+
 export async function listBranchesForRepo(
     octokit: Octokit,
     owner: string,
