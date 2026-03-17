@@ -62,7 +62,7 @@ const app = new Hono<{ Bindings: RuntimeBindings; Variables: { runtime?: Runtime
 
 function requireRuntime(c: ApiContext): RuntimeServices {
     const runtime = c.get("runtime");
-    if (!runtime) throw new ApiError(500, "Internal error (1301)");
+    if (!runtime) throw new ApiError(500, "Internal server error (CODE: 1301)");
     return runtime;
 }
 
@@ -136,7 +136,9 @@ app.get("/api/auth/callback", async (c) => {
     const auth = ((tokenResult as { authentication?: AuthCookie }).authentication ?? tokenResult) as AuthCookie;
 
     if (!auth?.token) {
-        throw new ApiError(500, "Failed to create token");
+        // If we got this far, the code/state were valid but token missing
+        // This is likely a GitHub API configuration issue
+        throw new ApiError(500, "Internal server error (CODE: 1303)");
     }
 
     await setSealedCookie(c, runtime, COOKIE_AUTH, auth, 180 * 24 * 60 * 60);
@@ -423,7 +425,7 @@ app.notFound((c) => c.json({ error: "Not found" }, 404));
 
 app.onError((error, c) => {
     if (error instanceof RuntimeEnvError) {
-        return c.json("Internal server error (CODE: 1301)", 500);
+        return c.json("Internal server error (CODE: 1302)", 500);
     }
 
     if (error instanceof ApiError) {
