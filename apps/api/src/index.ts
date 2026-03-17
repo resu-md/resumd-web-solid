@@ -1,3 +1,4 @@
+import { Octokit } from "@octokit/rest";
 import { Hono } from "hono";
 import { cors } from "hono/cors";
 import { z } from "zod";
@@ -6,6 +7,7 @@ import {
     assertRepoAccessible,
     ensureTargetBranch,
     getRepositoryInformation,
+    hasAuthorizedRepos,
     listBranchesForRepo,
     listInstalledRepos,
     loadFilesResponse,
@@ -19,6 +21,7 @@ import {
     type RuntimeBindings,
     type RuntimeServices,
 } from "./runtime.js";
+import { log } from "./logger.js";
 import {
     ensureBranchName,
     safeReturnTo,
@@ -32,12 +35,14 @@ import {
     clearCookie,
     COOKIE_AUTH,
     COOKIE_CTX,
+    COOKIE_INSTALL_CTX,
     COOKIE_STATE,
     randomState,
     readSealedCookie,
     setSealedCookie,
     type AuthCookie,
     type AuthFlowContextCookie,
+    type AuthInstallContextCookie,
     type CookieState,
 } from "./cookies.js";
 
@@ -151,6 +156,22 @@ app.get("/api/auth/callback", async (c) => {
     const flowContext = await readSealedCookie<AuthFlowContextCookie>(c, runtime, COOKIE_CTX);
     const returnTo = safeReturnTo(flowContext?.returnTo, "/");
     clearCookie(c, COOKIE_CTX);
+    clearCookie(c, COOKIE_INSTALL_CTX);
+
+    let needsRepoAuthorization = false;
+    try {
+        const userOctokit = new Octokit({ auth: auth.token });
+        const hasRepos = await hasAuthorizedRepos(runtime, userOctokit);
+        needsRepoAuthorization = !hasRepos;
+    } catch (error) {
+        // log.warn`Failed to check authorized repositories after login: ${error}`;
+    }
+
+    if (needsRepoAuthorization) {
+        const installContext: AuthInstallContextCookie = { returnTo };
+        await setSealedCookie(c, runtime, COOKIE_INSTALL_CTX, installContext, 15 * 60);
+        return c.redirect("/api/auth/manage", 302);
+    }
 
     const authorizeUrl = `/api/auth/start?returnTo=${encodeURIComponent(returnTo)}`;
 
@@ -160,6 +181,7 @@ app.get("/api/auth/callback", async (c) => {
 app.post("/api/auth/logout", async (c) => {
     clearCookie(c, COOKIE_AUTH);
     clearCookie(c, COOKIE_CTX);
+    clearCookie(c, COOKIE_INSTALL_CTX);
     clearCookie(c, COOKIE_STATE);
     return c.json({ ok: true });
 });
@@ -167,6 +189,19 @@ app.post("/api/auth/logout", async (c) => {
 app.get("/api/auth/manage", async (c) => {
     const runtime = requireRuntime(c);
     return c.redirect(runtime.githubInstallationUrl, 302);
+});
+
+app.get("/api/auth/setup", async (c) => {
+    const runtime = requireRuntime(c);
+    try {
+        const installContext = await readSealedCookie<AuthInstallContextCookie>(c, runtime, COOKIE_INSTALL_CTX);
+        const returnTo = safeReturnTo(installContext?.returnTo, "/");
+        clearCookie(c, COOKIE_INSTALL_CTX);
+        return c.redirect(`${runtime.env.APP_ORIGIN}${returnTo}`, 302);
+    } catch (error) {
+        // log.warn`Failed to resolve setup redirect: ${error}`;
+        return c.redirect(`${runtime.env.APP_ORIGIN}/`, 302);
+    }
 });
 
 app.get("/api/bootstrap", async (c) => {
@@ -215,8 +250,8 @@ app.get("/api/bootstrap", async (c) => {
                 clearCookie(c, COOKIE_AUTH);
                 return c.body(null, 401);
             }
-
-            throw error;
+            // Any other error (404 not found, 409 app not installed, etc.) means the repo is inaccessible
+            // log.warn`Failed to load selected repository ${owner}/${repo}: ${error}`;
         }
     }
 
