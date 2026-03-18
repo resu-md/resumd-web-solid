@@ -1,14 +1,16 @@
-@import url("https://fonts.googleapis.com/css2?family=Crimson+Text:ital,wght@0,400;0,600;0,700;1,400;1,600;1,700&display=swap");
+@import url("https://cdn.jsdelivr.net/gh/sugina-dev/latin-modern-web@1.0.1/style/latinmodern-roman.css");
+@import url("https://cdn.jsdelivr.net/gh/vsalvino/computer-modern@main/fonts/serif.css");
 
 @page {
     size: letter;
-    margin: 0.5in;
+    margin: 1cm;
 }
 
 /* meta */
 body {
-    font-family: "Crimson Text", serif;
-    font-size: 11pt;
+    font-family: "Latin Modern Roman", "Computer Modern Serif", "CMU Serif", "Times New Roman", serif;
+    font-size: 10pt;
+    line-height: 1.6;
     font-weight: 500;
     color: black;
 }
@@ -18,62 +20,48 @@ h1 {
     padding: 0;
     margin-top: -0.1in;
     text-align: center;
-    font-size: 26pt;
+    font-size: 18pt;
 }
 
 h2 {
     padding: 0;
-    margin: 5pt 0;
-    font-size: 11pt;
-    font-weight: normal;
-    text-transform: uppercase;
+    font-size: 14pt;
+    font-weight: 600;
     border-bottom: 1px solid #000000;
 }
-h2::first-letter {
-    font-size: 14pt;
-}
 
-h3, h4 {
+h3,
+h4 {
     margin: 0;
-    margin-left: 0.15in;
 }
 
 h3 {
     display: flex;
-    font-size: 11pt;
-    padding: 0;
     justify-content: space-between;
-}
-
-h3 > span {
-    font-weight: normal;
+    font-size: 12pt;
 }
 
 h4 {
     display: flex;
-    font-size: 11pt;
+    justify-content: space-between;
+    font-size: 10pt;
     font-weight: normal;
     font-style: italic;
-    padding: 0;
-    margin-top: 0;
-    margin-bottom: 0;
-    justify-content: space-between;
+    margin-top: 1pt;
+    margin-bottom: 2pt;
 }
 
-p {
-    margin: 0;
-    padding: 0;
+h4 a {
+    text-decoration: none;
 }
 
 a {
     color: black;
-    text-underline-offset: 4px;
+    text-decoration: none;
 }
 
 ul {
-    margin: 3pt 0 6pt 0.3in;
-    padding: 0 0 0 24px;
-    font-size: 11pt;
+    margin-top: 5px;
 }
 ul > li {
     margin-bottom: 1pt;
@@ -92,8 +80,7 @@ hr {
     display: flex;
     text-align: center;
     justify-content: center;
-    margin: 0px auto 0pt !important;
-    margin-top: -1pt;
+    margin: -2pt auto 0pt;
     padding: 0;
 }
 .contact > ul > li {
@@ -105,6 +92,6 @@ hr {
     margin-right: 8px;
 }
 .contact > ul > li:not(:last-child):after {
-    content: "|";
+    content: "●";
     margin-left: 8px;
 }

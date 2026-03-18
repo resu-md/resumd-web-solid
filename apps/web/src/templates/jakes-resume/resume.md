@@ -1,6 +1,6 @@
 <!-- Credits to Jake Ryan for this template; original: https://www.overleaf.com/latex/templates/jakes-resume/syzfjbzwjncs -->
 
-# Jake Ryan
+# Your Name
 
 <div class="contact">
 
@@ -13,34 +13,34 @@
 
 ## Education
 
-### Southwestern University <span class="spacer"></span><span class="normal">Aug. 2018 &ndash; May 2021</span>
+### Southwestern University <hr/> Aug. 2018 &ndash; May 2021
 
 <!-- optionally include GPA if >=3.7 -->
 <!-- Generally, don't include coursework. If you do, only if you're a student & if they're upper level courses. -->
 
-#### Bachelor of Arts in Computer Science, Minor in Business<span class="spacer"></span>Georgetown, TX
+#### Bachelor of Arts in Computer Science, Minor in Business<hr/> Georgetown, TX
 
 ## Experience
 
-### Undergraduate Research Assistant <span class="spacer"></span><span class="normal"> Jul 2021 &ndash; Present </span>
+### Undergraduate Research Assistant <hr/> Jul 2021 &ndash; Present
 
-#### Texas A&M University <span class="spacer"></span> College Station, TX
+#### Texas A&M University <hr/> College Station, TX
 
 - Developed a REST API using FastAPI and PostgreSQL to store data from learning management systems
 - Developed a full-stack web application using Flask, React, PostgreSQL and Docker to analyze GitHub data
 - Explored ways to visualize GitHub collaboration in a classroom setting
 
-### Information Technology Support Specialist<span class="spacer"></span><span class="normal"> Sep. 2018 &ndash; Present </span>
+### Information Technology Support Specialist<hr/> Sep. 2018 &ndash; Present
 
-#### Southwestern University <span class="spacer"></span> Georgetown, TX
+#### Southwestern University <hr/> Georgetown, TX
 
 - Communicate with managers to set up campus computers used on campus
 - Assess and troubleshoot computer problems brought by students, faculty and staff
 - Maintain upkeep of computers, classroom equipment, and 200 printers across campus
 
-### Artificial Intelligence Research Assistant<span class="spacer"></span><span class="normal"> May 2019 &ndash; July 2019 </span>
+### Artificial Intelligence Research Assistant<hr/> May 2019 &ndash; July 2019
 
-#### Southwestern University <span class="spacer"></span> Georgetown, TX
+#### Southwestern University <hr/> Georgetown, TX
 
 - Explored methods to generate video game dungeons based off of The Legend of Zelda
 - Developed a game in Java to test the generated dungeons
@@ -51,20 +51,20 @@
 
 <!-- Older resume bits can be commented out so that you can keep the info without deleting it -->
 
-<!-- ### Information Technology Support Specialist<span class="spacer"></span><span class="normal"> Sep. 2018 &ndash; Present </span>
+<!-- ### Information Technology Support Specialist <hr/> Sep. 2018 &ndash; Present
 
-### Artificial Intelligence Research Assistant<span class="spacer"></span><span class="normal"> May 2019 &ndash; July 2019 </span> -->
+### Artificial Intelligence Research Assistant <hr/> May 2019 &ndash; July 2019 -->
 
 ## Projects
 
-### [Gitlytics](https://example.com)<span class="tech-stack">&nbsp;| _Python, Flask, React, PostgreSQL, Docker_</span><span class="spacer"></span><span class="normal">June 2020 &ndash; Present</span>
+### [Gitlytics](https://example.com)<span>&nbsp;| _Python, Flask, React, PostgreSQL, Docker_</span> <hr/> June 2020 &ndash; Present
 
 - Developed a full-stack web application using with Flask serving a REST API with React as the frontend
 - Implemented GitHub OAuth to get data from user's repositories
 - Visualized GitHub data to show collaboration
 - Used Celery and Redis for asynchronous tasks
 
-### Simple Paintball<span class="tech-stack">&nbsp;| _Spigot API, Java, Maven, TravisCI, Git_</span><span class="spacer"></span><span class="normal">May 2018 &ndash; May 2020</span>
+### Simple Paintball<span>&nbsp;| _Spigot API, Java, Maven, TravisCI, Git_</span><hr/> May 2018 &ndash; May 2020
 
 - Developed a Minecraft server plugin to entertain kids during free time for a previous job
 - Published plugin to websites gaining **2K+ downloads** and an average 4.5/5-star review
@@ -74,6 +74,9 @@
 ## Technical Skills
 
 > **Languages**: Java, Python, C/C++, SQL, PostgreSQL, JavaScript, HTML, CSS, R
+
 > **Frameworks**: React, Node.js, Flask, JUnit, WordPress, Material-UI, FastAPI
+
 > **Developer Tools**: Git, Docker, TravisCI, Google Cloud Platform, VS Code, AWS
+
 > **Libraries**: pandas, NumPy, Matplotlib

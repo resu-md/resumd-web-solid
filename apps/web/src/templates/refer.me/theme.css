@@ -6,22 +6,30 @@
 }
 
 body {
-    font-family: Tinos, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Robotom, "Helvetica Neue", sans-serif;
+    font-family:
+        Tinos,
+        system-ui,
+        -apple-system,
+        BlinkMacSystemFont,
+        "Segoe UI",
+        Robotom,
+        "Helvetica Neue",
+        sans-serif;
     font-size: 14px;
     font-weight: 400;
 }
 
-h1, h2, h3, p, a, li {
+h1, h2, h3, h4, p, a, li {
     color: black;
 }
 
 h1 {
     text-transform: uppercase;
-    text-align: left;
+    text-align: center;
     font-size: 32px;
     margin: 0;
     padding: 0;
-    
+    margin-bottom: 2px;
 }
 
 h2 {
@@ -38,6 +46,25 @@ h3 {
     font-size: 15px;
     padding: 0;
     justify-content: space-between;
+}
+
+h3 span {
+    font-weight: normal;
+}
+
+h4 {
+    margin: 2px 0;
+    display: flex;
+    font-size: 14px;
+    font-style: italic;
+    font-weight: normal;
+    padding: 0;
+    justify-content: space-between;
+}
+
+h3 > span:last-child,
+h4 > span:last-child {
+    white-space: nowrap;
 }
 
 p {
@@ -67,24 +94,41 @@ strong, em, a {
     padding-right: 2px;
 }
 
-.spacer {
-    margin: 0 auto;
+hr {
+    /* used as spacer */
+    visibility: hidden;
 }
 
-.header {
+/* Contact */
+.contact {
     margin-bottom: 16px;
 }
-
-.header * {
+.contact > ul {
     display: flex;
+    flex-wrap: wrap;
     justify-content: center;
+    list-style-type: none;
+    margin: 0;
+    padding: 0;
+}
+.contact > ul > li {
+    margin: 0;
+    padding: 0;
+    list-style-type: none;
+}
+.contact > ul > li::before {
+    content: none;
+}
+.contact > ul > li:nth-child(1),
+.contact > ul > li:nth-child(2) {
+    flex: 0 0 100%;
     text-align: center;
 }
-
-.header h1 {
-    order: 0;
+.contact > ul > li:nth-child(3),
+.contact > ul > li:nth-child(4) {
+    white-space: pre;
 }
-
-.header {
-    order: 1;
+.contact > ul > li:nth-child(3)::after {
+    content: "|";
+    margin: 0 6px;
 }

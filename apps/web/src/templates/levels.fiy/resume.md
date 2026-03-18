@@ -1,97 +1,77 @@
 # First Last
 
-<div class="headerInfo">
+<div class="contact">
 
-City, State ZIP <span class="spacer"></span> [linkedin.com/in/linkedin-handle](https://www.linkedin.com/in/linkedin-handle)
-
-resume@levels.fyi <span class="spacer"></span> [github.com/github-handle](https://github.com/github-handle)
+- City, State ZIP
+- [resume@levels.fyi](mailto:resume@levels.fyi)
+- [linkedin.com/in/linkedin-handle](https://www.linkedin.com/in/linkedin-handle)
+- [github.com/github-handle](https://github.com/github-handle)
 
 </div>
 
-I am a full-stack software engineer especially interested in building magical mobile experiences, scaling systems up, and shipping reliable applications. Note: use the summary when it makes sense.
+I am a full-stack software engineer especially interested in building magical mobile experiences, scaling systems up, and shipping reliable applications. Use the summary when it makes sense.
 
 ## Education
 
-- **Masters of Science, Computer Science,**&nbsp;University of Munich, Germany<span class="spacer"></span><span>**2022 &ndash; 2023**</span>
+### University of Munich <hr/> Munich, Germany
 
-- **Bachelors of Science, Computer Science,**&nbsp;University of Technology, Budapest<span class="spacer"></span>**2020 &ndash; 2022**</span>
+#### Masters of Science, Computer Science <hr/> 2022 &ndash; 2023
 
-<!-- Coursework is generally not a great use of space on a resume. If you feel strongly about including it, only include upper-level courses that are interesting / important. Do not include intro-level courses.
+### University of Technology <hr/> Budapest, Hungary
 
-ie: Data structures and Algorithms, AI / ML, Server side web development, etc.
+#### Bachelors of Science, Computer Science <hr/> 2020 &ndash; 2022
 
--->
+<!-- Coursework is generally not a great use of space on a resume. If you feel strongly about including it, only include upper-level courses that are interesting and important. -->
 
 ## Work Experience
 
-<!--
-To get the 3 column formatting with proper centering,
-theres a bit of <span> wrapping that is required for the content.
--->
+### Levels.fyi <hr/> San Francisco, CA
 
-<div class="threeColumns">
+#### Senior Software Engineer, Payments Team <hr/> Sep 2018 &ndash; Present
 
-### <span>Senior Software Engineer</span><span>Levels.fyi</span><span>Sep 2018 &ndash; Present</span>
-
-<span>Payments team</span><span>San Francisco, CA</span><span><!--empty--></span>
-
-</div>
-
-- Worked as Senior Engineer on (company names) (backend/frontend, etc) product with XXX functionality and XXX technologies. First bullet should summarize experience
-- Add at numbers to the impact, use active languages and mention specifics like the languages used.
+- Worked as Senior Engineer on backend and frontend products with production-critical payment functionality. The first bullet should summarize experience.
+- Add numbers to the impact, use active language, and mention specifics like languages used.
 - The more recent the position, the more details you usually want to share.
-- Bullets should include business impact like bolding some **40%** percentages, or share your tech impact
-- Collaborated with other teams (other engineering teams, design, data, product, etc.)
+- Bullets should include business impact like bolding **40%** improvements, or share your technical impact.
+- Collaborated with other teams across engineering, design, product, and data.
 
-<div class="threeColumns">
+### Skyscanner <hr/> London, UK
 
-### <span>Software Engineer II</span><span>Skyscanner</span><span>2017 &ndash; 2018</span>
+#### Software Engineer II, Payments Team <hr/> 2017 &ndash; 2018
 
-<span>Payments team</span><span>London, UK</span><span><!--empty--></span>
-
-</div>
-
-- Results, impact and your contribution.
-- Lorem ipsum dolor sit amet 40%, consectetur adipiscing elit, sed do eiusmod tempor incididunt ut labore et dolore magna aliqua.
+- Results, impact, and your contribution.
+- Lorem ipsum dolor sit amet **40%**, consectetur adipiscing elit, sed do eiusmod tempor incididunt ut labore et dolore magna aliqua.
 - Ut enim ad minim veniam **100**, quis nostrud exercitation ullamco laboris nisi ut aliquip ex ea commodo.
 
-<div class="threeColumns">
+### Skype <hr/> London, UK
 
-### <span>Software Developer</span><span>Skype</span><span>2015 &ndash; 2017</span>
+#### Software Developer, Payments Team <hr/> 2015 &ndash; 2017
 
-<span>Payments team</span><span>London, UK</span><span><!--empty--></span>
+- Results, impact, and your contribution.
+- As the position is more in the past, be mindful of how much detail you add and what you call out.
 
-</div>
+### LogMeIn <hr/> Budapest, Hungary
 
-- Results, impact and your contribution.
-- As the position is more in the past, you'll want to be mindful on how much details you add, and what you call out. You want to make sure there's space on all the key details on the first page..
+#### Software Developer, Passwords Team <hr/> Summer 2014
 
-<div class="threeColumns">
-
-### <span>Software Developer</span><span>LogMeIn</span><span>Summer 2014</span>
-
-<span>Passwords team</span><span>Budapest, Hungary</span><span><!--empty--></span>
-
-</div>
-
-- Results, impact and your contribution. The further in the past a position is, often the less important its details.
+- Results, impact, and your contribution. The further in the past a position is, often the less important its details.
 
 ## Projects
 
-### HydroHomie <span class="spacer"></span> 2022
+### HydroHomie <hr/> 2022
 
-- Architected a fullstack application that sends a text message to users every hour to remind them to hydrate
-- Conducted user interviews with **30 users** and used the feedback to iterate and improve the product
-- Technologies used: React, CSS, TypeScript, NextJS
+- Architected a full-stack application that sends a text message to users every hour to remind them to hydrate.
+- Conducted user interviews with **30 users** and used the feedback to iterate and improve the product.
+- Technologies used: React, CSS, TypeScript, NextJS.
 
-### resume.lol <span class="spacer"></span> 2022
+### resume.lol <hr/> 2022
 
-- Built a fullstack application where users can create their resumes using Markdown and CSS
-- More bullets points talking about your actual project. Ideally use the "what is it", "how I did it", and "why should I care"
-- Technologies used: React, CSS, TypeScript, NextJS
+- Built a full-stack application where users can create their resumes using Markdown and CSS.
+- Add bullet points that cover what it is, how you built it, and why it matters.
+- Technologies used: React, CSS, TypeScript, NextJS.
 
 ## Technical Skills
 
 - **Languages**: Java, Python, C++, HTML, CSS, JavaScript
-- **Technologies**: React, MongoDB, Express, Node.Js
-- **Other**: <span class="spacer">Put whatever you want here that you think is relevant (ie AWS)</span>
+- **Technologies**: React, MongoDB, Express, Node.js
+- **Other**: Put whatever you want here that you think is relevant (for example AWS)
