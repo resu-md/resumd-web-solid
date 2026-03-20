@@ -44,6 +44,8 @@ export default function MonacoDiffEditor(props: { class?: string; activeTabId: s
             minimap: { enabled: false },
             scrollbar: { useShadows: false },
             renderSideBySide: true,
+            wordWrap: "on",
+            diffWordWrap: "on",
             originalEditable: false,
             readOnly: true,
             theme: theme() === "dark" ? THEME_DARK_ID : THEME_LIGHT_ID,
