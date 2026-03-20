@@ -1,5 +1,7 @@
+import styles from "./CommitButton.module.css";
+import clsx from "clsx";
 import { IoEye, IoEyeOff } from "solid-icons/io";
-import { createEffect, createSignal, Show } from "solid-js";
+import { createEffect, createSignal, onCleanup, onMount, Show, type JSX } from "solid-js";
 
 export default function CommitButton(props: {
     initialShowDiff?: boolean;
@@ -11,10 +13,34 @@ export default function CommitButton(props: {
     onCommit: (message?: string) => void;
 }) {
     const [showDiff, setShowDiff] = createSignal(props.initialShowDiff ?? false);
+    const [diffWidth, setDiffWidth] = createSignal<number | null>(null);
     const hasChanges = () => props.hasChanges ?? true;
+
+    let diffCountRef: HTMLDivElement | undefined;
 
     createEffect(() => {
         setShowDiff(props.initialShowDiff ?? false);
+    });
+
+    const measureDiffWidth = () => {
+        if (!diffCountRef) return;
+        setDiffWidth(diffCountRef.scrollWidth);
+    };
+
+    onMount(() => {
+        measureDiffWidth();
+
+        if (typeof ResizeObserver === "undefined" || !diffCountRef) return;
+
+        const observer = new ResizeObserver(measureDiffWidth);
+        observer.observe(diffCountRef);
+        onCleanup(() => observer.disconnect());
+    });
+
+    createEffect(() => {
+        props.diffStats.added;
+        props.diffStats.removed;
+        measureDiffWidth();
     });
 
     const handleCommit = () => {
@@ -22,15 +48,16 @@ export default function CommitButton(props: {
 
         const message = prompt("Commit message (optional):");
         if (message === null) return;
+
         props.onCommit(message.trim() || undefined);
     };
 
     const handleShowDiffToggle = () => {
         if (!hasChanges()) return;
 
-        const newShowDiff = !showDiff();
-        setShowDiff(newShowDiff);
-        props.onShowDiffChange(newShowDiff);
+        const next = !showDiff();
+        setShowDiff(next);
+        props.onShowDiffChange(next);
     };
 
     const handleUndo = () => {
@@ -42,13 +69,9 @@ export default function CommitButton(props: {
     };
 
     return (
-        <div
-            class="proeminent-button group/commit-button flex items-center rounded-full"
-            style={{ "interpolate-size": "allow-keywords" }}
-            // onMouseEnter={handleMouseEnter}
-            // onMouseLeave={handleMouseLeave}
-        >
+        <div class="proeminent-button flex items-center rounded-full">
             <button
+                type="button"
                 class="button-green -m-px flex h-8 items-center gap-2 rounded-full px-3 disabled:cursor-not-allowed disabled:opacity-60"
                 onClick={handleCommit}
                 disabled={!hasChanges() || props.isCommitting}
@@ -56,62 +79,85 @@ export default function CommitButton(props: {
             >
                 {props.isCommitting ? "Committing..." : "Commit"}
             </button>
-            <div class="h-full pr-3.25 pl-2.25 font-mono text-sm tabular-nums transition-[margin]">
-                <span class="text-[#62BA46]">+{props.diffStats.added}</span>
-                <span class="text-red ml-0.75">-{props.diffStats.removed}</span>
-            </div>
-            <div class="ease flex h-7.75 w-0 items-center justify-start overflow-hidden rounded-r-full transition-[width] delay-100 group-hover/commit-button:w-auto data-[open=true]:w-auto">
-                <div class="bg-separator h-4 w-px shrink-0" />
-                <button
-                    class="hover:bg-fill-quaternary active:bg-fill-secondary text-label-secondary flex h-full shrink-0 items-center gap-1 text-sm"
-                    title="Preview changes"
-                    onClick={handleShowDiffToggle}
-                    disabled={!hasChanges()}
+
+            <div
+                class={clsx(
+                    "relative flex h-8 items-center overflow-hidden rounded-r-full transition-[width] duration-200 ease-out motion-reduce:transition-none",
+                    styles.swapArea,
+                )}
+                style={
+                    diffWidth() == null
+                        ? undefined
+                        : ({
+                              "--diff-width": `${diffWidth()}px`,
+                          } as JSX.CSSProperties)
+                }
+            >
+                <div
+                    ref={diffCountRef}
+                    class={clsx(
+                        "flex h-full shrink-0 items-center pr-3.25 pl-2.25 font-mono text-sm whitespace-nowrap tabular-nums transition-[opacity,transform,filter] duration-200 ease-out motion-reduce:transition-none",
+                        styles.diffContent,
+                    )}
                 >
-                    <Show when={!showDiff()} fallback={<IoEye class="text-label-secondary mx-1.5 ml-2 size-4" />}>
-                        <IoEyeOff class="text-label-secondary mx-1.5 ml-2 size-4" />
-                    </Show>
-                </button>
-                <div class="bg-separator h-4 w-px shrink-0" />
-                <button
-                    class="hover:bg-fill-quaternary active:bg-fill-secondary h-full shrink-0"
-                    title="Undo changes"
-                    onClick={handleUndo}
-                    disabled={!hasChanges()}
+                    <span class="text-[#62BA46]">+{props.diffStats.added}</span>
+                    <span class="text-red ml-0.75">-{props.diffStats.removed}</span>
+                </div>
+
+                <div
+                    class={clsx(
+                        "absolute inset-0 flex h-full items-center whitespace-nowrap transition-[opacity,transform,filter] duration-200 ease-out motion-reduce:transition-none",
+                        styles.actions,
+                    )}
                 >
-                    {/* <IoArrowUndo class="text-label-secondary mx-1.5 mr-2.5 size-4" /> */}
-                    {/* <svg
-                        stroke-width="0"
-                        height="1em"
-                        width="1em"
-                        xmlns="http://www.w3.org/2000/svg"
-                        viewBox="0 0 16 16"
-                        fill="currentColor"
-                        color="currentColor"
-                        style="overflow: visible;"
-                        class="text-label-secondary mx-1.5 mr-2.5 size-4 -rotate-45"
+                    <button
+                        type="button"
+                        class={clsx(
+                            "hover:bg-fill-quaternary active:bg-fill-secondary text-label-secondary flex h-full items-center justify-center disabled:cursor-not-allowed disabled:opacity-60",
+                            styles.actionButton,
+                            styles.previewButton,
+                        )}
+                        title="Preview changes"
+                        aria-label={showDiff() ? "Hide diff preview" : "Show diff preview"}
+                        onClick={handleShowDiffToggle}
+                        disabled={!hasChanges()}
                     >
-                        <path d="M1.22 6.28a.749.749 0 0 1 0-1.06l3.5-3.5a.749.749 0 1 1 1.06 1.06L3.561 5h7.188l.001.007L10.749 5c.058 0 .116.007.171.019A4.501 4.501 0 0 1 10.5 14H8.796a.75.75 0 0 1 0-1.5H10.5a3 3 0 1 0 0-6H3.561L5.78 8.72a.749.749 0 1 1-1.06 1.06l-3.5-3.5Z"></path>
-                    </svg> */}
-                    {/* <RiArrowsArrowGoBackFill class="text-label-secondary mx-1.5 mr-2.5 size-4" /> */}
-                    <svg
-                        stroke-width="2"
-                        height="1em"
-                        width="1em"
-                        xmlns="http://www.w3.org/2000/svg"
-                        fill="none"
-                        stroke="currentColor"
-                        stroke-linecap="round"
-                        stroke-linejoin="round"
-                        viewBox="0 0 24 24"
-                        color="currentColor"
-                        style="overflow: visible;"
-                        class="text-label-secondary mx-1.5 mr-2.5 size-4.5"
+                        <Show when={!showDiff()} fallback={<IoEye class="size-4" />}>
+                            <IoEyeOff class="size-4" />
+                        </Show>
+                    </button>
+
+                    <button
+                        type="button"
+                        class={clsx(
+                            "hover:bg-fill-quaternary active:bg-fill-secondary text-label-secondary flex h-full items-center justify-center disabled:cursor-not-allowed disabled:opacity-60",
+                            styles.actionButton,
+                            styles.undoButton,
+                        )}
+                        title="Undo changes"
+                        aria-label="Undo changes"
+                        onClick={handleUndo}
+                        disabled={!hasChanges()}
                     >
-                        <path d="m9 14-4-4 4-4"></path>
-                        <path d="M5 10h11a4 4 0 1 1 0 8h-1"></path>
-                    </svg>
-                </button>
+                        <svg
+                            stroke-width="2"
+                            height="1em"
+                            width="1em"
+                            xmlns="http://www.w3.org/2000/svg"
+                            fill="none"
+                            stroke="currentColor"
+                            stroke-linecap="round"
+                            stroke-linejoin="round"
+                            viewBox="0 0 24 24"
+                            color="currentColor"
+                            style="overflow: visible;"
+                            class="size-4.5"
+                        >
+                            <path d="m9 14-4-4 4-4"></path>
+                            <path d="M5 10h11a4 4 0 1 1 0 8h-1"></path>
+                        </svg>
+                    </button>
+                </div>
             </div>
         </div>
     );

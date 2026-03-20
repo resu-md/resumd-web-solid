@@ -1,0 +1,58 @@
+.swapArea {
+    --preview-button-width: 2rem;
+    --undo-button-padding-right: 0.15rem;
+    --undo-button-width: calc(2rem + var(--undo-button-padding-right));
+    --actions-width: calc(var(--preview-button-width) + var(--undo-button-width));
+
+    width: var(--diff-width, auto);
+    perspective: 600px;
+}
+
+.swapArea:hover {
+    width: var(--actions-width);
+}
+
+.diffContent,
+.actions {
+    backface-visibility: hidden;
+    will-change: transform, opacity, filter;
+}
+
+.diffContent {
+    transform: translateY(0) rotateX(0deg);
+    transform-origin: center;
+    opacity: 1;
+    filter: blur(0);
+}
+
+.swapArea:hover .diffContent {
+    transform: translateY(-6px) rotateX(18deg);
+    opacity: 0;
+    filter: blur(2px);
+}
+
+.actions {
+    pointer-events: none;
+    transform: translateY(6px) rotateX(-18deg);
+    transform-origin: center bottom;
+    opacity: 0;
+    filter: blur(2px);
+}
+
+.swapArea:hover .actions {
+    pointer-events: auto;
+    transform: translateY(0) rotateX(0deg);
+    opacity: 1;
+    filter: blur(0);
+}
+
+.previewButton {
+    width: var(--preview-button-width);
+    flex: 0 0 var(--preview-button-width);
+}
+
+.undoButton {
+    width: var(--undo-button-width);
+    flex: 0 0 var(--undo-button-width);
+    padding-right: var(--undo-button-padding-right);
+}
