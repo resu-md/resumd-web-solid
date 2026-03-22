@@ -4,6 +4,7 @@ import { exportAsPdf } from "@/lib/export-as-pdf";
 import { exportAsZip } from "@/lib/export-as-zip";
 // Contexts
 import { useGithubAuth } from "@/contexts/github/GithubContext";
+import { useGithubRepositories } from "@/contexts/github/useGithubRepositories";
 import { AnonymousResumeProvider, useAnonymousResume } from "@/contexts/AnonymousResumeContext";
 // Components
 import MonacoEditor from "@/components/editor/monaco-editor/MonacoEditor";
@@ -14,11 +15,18 @@ import SaveOptionsButton from "@/components/preview/toolbar/SaveOptionsButton";
 
 export default function AnonymousEditorPage() {
     const { user } = useGithubAuth();
+    const { repositories } = useGithubRepositories();
     const navigate = useNavigate();
 
     createEffect(() => {
-        if (user()) {
-            navigate("/manage", { replace: true }); // TODO: Redirect to last repository
+        if (!user()) return;
+
+        const repos = repositories();
+        if (repos === undefined) return; // Repositories are still loading
+        if (repos.length === 1) {
+            navigate(`/${repos[0].owner}/${repos[0].repo}`, { replace: true });
+        } else {
+            navigate("/manage", { replace: true });
         }
     });
 
