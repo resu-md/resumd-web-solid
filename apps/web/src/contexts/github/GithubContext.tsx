@@ -68,8 +68,6 @@ export function GithubProvider(props: { children?: JSXElement }) {
         return { owner, repo };
     });
 
-    const isTreeRoute = createMemo(() => params.branch !== undefined);
-
     const routeBranchName = createMemo(() => {
         if (params.branch === undefined) return undefined;
         const rawPath = params.branch.startsWith("/") ? params.branch.slice(1) : params.branch;
@@ -162,9 +160,6 @@ export function GithubProvider(props: { children?: JSXElement }) {
     const setSelectedBranch = (branch: BranchInformation) => {
         const repo = routeRepository();
         if (!repo) return;
-
-        if (!isTreeRoute() && branch.isDefault) return;
-
         const encodedBranch = encodeBranchPath(branch.name);
         navigate(`/${repo.owner}/${repo.repo}/tree/${encodedBranch}`);
     };
@@ -177,7 +172,7 @@ export function GithubProvider(props: { children?: JSXElement }) {
         const fallbackBranch = getFallbackBranch(branchList);
         if (!fallbackBranch) return;
 
-        if (!isTreeRoute()) return;
+        if (params.branch === undefined) return;
 
         const branchFromRoute = routeBranchName();
         if (!branchFromRoute || !branchList.some((b) => b.name === branchFromRoute)) {
