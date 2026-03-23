@@ -23,7 +23,7 @@ export default function SaveOptionsButton(props: {
                     <FiChevronDown class="size-5 translate-y-px text-white" />
                 </DropdownMenu.Trigger>
                 <DropdownMenu.Portal>
-                    <DropdownMenu.Content class="proeminent-button flex flex-col gap-1 rounded-[13px] py-1 text-sm backdrop-blur-lg outline-none">
+                    <DropdownMenu.Content class="proeminent-button flex flex-col rounded-[13px] py-1 text-sm backdrop-blur-lg outline-none">
                         <Show when={props.onPushToGithub}>
                             <DropdownMenu.Item
                                 class="group data-highlighted:bg-fill-tertiary mx-1 flex cursor-pointer items-center gap-2 rounded-[10px] py-0.75 pr-4 pl-1.75 outline-none"
@@ -43,7 +43,7 @@ export default function SaveOptionsButton(props: {
                             Download sources as .zip
                         </DropdownMenu.Item>
                         <Show when={props.onLogout || props.onManageRepositories}>
-                            <DropdownMenu.Separator class="border-separator mx-3" />
+                            <DropdownMenu.Separator class="border-separator mx-3 my-1" />
                         </Show>
                         <Show when={props.onManageRepositories}>
                             <DropdownMenu.Item
