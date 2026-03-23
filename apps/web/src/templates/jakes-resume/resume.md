@@ -1,5 +1,3 @@
-<!-- Credits to Jake Ryan for this template; original: https://www.overleaf.com/latex/templates/jakes-resume/syzfjbzwjncs -->
-
 # Your Name
 
 <div class="contact">
