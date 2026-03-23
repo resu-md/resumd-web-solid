@@ -1,0 +1,24 @@
+/* MONACO EDITOR STYLE TWEAKS */
+
+/* Offset the find widget position so the tab selector doesn't cover it */
+.monaco-editor {
+    --tab-selector-half-height: 1.1875rem;
+}
+.monaco-editor .find-widget {
+    transform: translateY(calc(-100% - var(--tab-selector-half-height))) !important;
+}
+.monaco-editor .find-widget.visible {
+    transform: translateY(var(--tab-selector-half-height)) !important;
+    overflow: visible;
+}
+.monaco-editor .find-widget.visible::before {
+    content: "";
+    position: absolute;
+    top: -100%;
+    left: 0;
+    right: 0;
+    height: 100%;
+    background: inherit;
+    border-left: 2px solid var(--vscode-editorWidget-resizeBorder, var(--vscode-editorWidget-border));
+    pointer-events: none;
+}
