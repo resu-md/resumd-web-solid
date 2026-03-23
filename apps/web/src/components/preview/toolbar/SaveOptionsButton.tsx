@@ -11,7 +11,7 @@ export default function SaveOptionsButton(props: {
     onLogout?: () => void;
 }) {
     return (
-        <div class="save-options-button flex items-center gap-[2px]">
+        <div class="save-options-button flex items-center gap-0.5">
             <button
                 class="button-blue flex h-8 items-center justify-center rounded-[16px_3px_3px_16px] pr-2.5 pl-3 text-nowrap"
                 onClick={props.onExportPdf}
@@ -26,18 +26,20 @@ export default function SaveOptionsButton(props: {
                     <DropdownMenu.Content class="proeminent-button flex flex-col rounded-[13px] py-1 text-sm backdrop-blur-lg outline-none">
                         <Show when={props.onPushToGithub}>
                             <DropdownMenu.Item
-                                class="group data-highlighted:bg-fill-tertiary mx-1 flex cursor-pointer items-center gap-2 rounded-[10px] py-0.75 pr-4 pl-1.75 outline-none"
+                                class="group data-highlighted:bg-fill-tertiary mx-1 flex cursor-pointer items-center rounded-[10px] py-0.75 pr-4 pl-1.75 outline-none"
                                 onSelect={props.onPushToGithub}
                             >
-                                <IoLogoGithub class="text-label-primary size-4" />
+                                <div class="mr-1.75 ml-px flex w-4 justify-center">
+                                    <IoLogoGithub class="text-label-primary size-4" />
+                                </div>
                                 Push to Github
                             </DropdownMenu.Item>
                         </Show>
                         <DropdownMenu.Item
-                            class="group data-highlighted:bg-fill-tertiary mx-1 flex cursor-pointer items-center gap-2 rounded-[10px] py-0.75 pr-4 pl-1.75 outline-none"
+                            class="group data-highlighted:bg-fill-tertiary mx-1 flex cursor-pointer items-center rounded-[10px] py-0.75 pr-4 pl-1.75 outline-none"
                             onSelect={props.onDownloadZip}
                         >
-                            <div class="flex w-4 justify-center">
+                            <div class="mr-1.75 ml-px flex w-4 justify-center">
                                 <IoFolderOpenOutline class="text-label-primary size-3.5" />
                             </div>
                             Download sources as .zip
@@ -47,21 +49,21 @@ export default function SaveOptionsButton(props: {
                         </Show>
                         <Show when={props.onManageRepositories}>
                             <DropdownMenu.Item
-                                class="group data-highlighted:bg-fill-tertiary mx-1 flex cursor-pointer items-center gap-2 rounded-[10px] py-0.75 pr-4 pl-1.75 outline-none"
+                                class="group data-highlighted:bg-fill-tertiary mx-1 flex cursor-pointer items-center rounded-[10px] py-0.75 pr-4 pl-1.75 outline-none"
                                 onSelect={props.onManageRepositories}
                             >
-                                <div class="flex w-4 justify-center">
-                                    <IoLogoGithub class="text-label-primary size-3.5" />
-                                </div>
-                                Manage GitHub repositories
+                                <div class="mr-1.75 ml-px flex w-4 justify-center"></div>
+                                Manage repositories...
                             </DropdownMenu.Item>
                         </Show>
                         <Show when={props.onLogout}>
                             <DropdownMenu.Item
-                                class="data-highlighted:bg-fill-tertiary text-red mx-1 flex cursor-pointer items-center rounded-[10px] px-2.5 py-0.75 pr-6 outline-none"
+                                class="group text-red data-highlighted:bg-fill-tertiary mx-1 flex cursor-pointer items-center rounded-[10px] py-0.75 pr-4 pl-1.75 outline-none"
                                 onSelect={props.onLogout}
                             >
-                                <IoLogOutOutline class="mr-0.75 size-4 -translate-x-px" />
+                                <div class="mr-1.75 ml-px flex w-4 justify-center">
+                                    <IoLogOutOutline class="size-4" />
+                                </div>
                                 Sign out
                             </DropdownMenu.Item>
                         </Show>
