@@ -7,7 +7,7 @@ Markdown-based resume editor. Create resumes with Markdown, styled with CSS, and
 ![Demo: Step 1](https://github.com/user-attachments/assets/9f20fa54-a5f7-48e2-8afd-1af611d746f9)
 
 2. Navigate to the cloned repository URL
-3. Replace ~github~.com/yourname/yourresume with <ins>resumemarkdown</ins>.com/yourname/yourresume
+3. Replace ~github~.com/yourname/yourresume with _resumemarkdown_.com/yourname/yourresume
 
 ![Demo: Steps 2 and 3](https://github.com/user-attachments/assets/5a8d46d7-a053-405c-ba3b-ecd12d8f9081)
 
