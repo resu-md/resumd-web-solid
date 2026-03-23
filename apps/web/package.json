@@ -36,5 +36,9 @@
         "typescript": "~5.9.3",
         "vite": "^7.2.4",
         "vite-plugin-solid": "^2.11.10"
+    },
+    "optionalDependencies": {
+        "@rollup/rollup-linux-x64-gnu": "^4.59.0",
+        "lightningcss-linux-x64-gnu": "^1.31.1"
     }
 }
