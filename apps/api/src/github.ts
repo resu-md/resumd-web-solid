@@ -412,11 +412,8 @@ export async function ensureTargetBranch(params: {
     owner: string;
     repo: string;
     targetBranch: string;
-    defaultBranch: string;
-    baseBranch?: string;
-    createBranchIfMissing: boolean;
-}): Promise<{ headSha: string; createdBranch: boolean; baseBranch: string }> {
-    const { octokit, owner, repo, targetBranch, defaultBranch, baseBranch, createBranchIfMissing } = params;
+}): Promise<{ headSha: string; createdBranch: boolean }> {
+    const { octokit, owner, repo, targetBranch } = params;
 
     try {
         const targetRef = await octokit.rest.git.getRef({
@@ -428,109 +425,70 @@ export async function ensureTargetBranch(params: {
         return {
             headSha: targetRef.data.object.sha,
             createdBranch: false,
-            baseBranch: targetBranch,
         };
+    } catch (error) {
+        if (statusOf(error) === 404) {
+            throw new ApiError(404, `Target branch "${targetBranch}" does not exist`);
+        }
+
+        throw error;
+    }
+}
+
+export async function createBranchFromBase(params: {
+    octokit: Octokit;
+    owner: string;
+    repo: string;
+    targetBranch: string;
+    baseBranch: string;
+}): Promise<{ headSha: string; createdBranch: boolean }> {
+    const { octokit, owner, repo, targetBranch, baseBranch } = params;
+
+    try {
+        await octokit.rest.git.getRef({
+            owner,
+            repo,
+            ref: `heads/${targetBranch}`,
+        });
+
+        throw new ApiError(409, `Branch "${targetBranch}" already exists`);
     } catch (error) {
         if (statusOf(error) !== 404) {
             throw error;
         }
     }
 
-    if (!createBranchIfMissing) {
-        throw new ApiError(404, `Target branch "${targetBranch}" does not exist`);
-    }
-
-    const branchBase =
-        (baseBranch && baseBranch.trim().length > 0 ? baseBranch.trim() : defaultBranch) || defaultBranch;
-
+    let baseRef;
     try {
-        const baseRef = await octokit.rest.git.getRef({
+        baseRef = await octokit.rest.git.getRef({
             owner,
             repo,
-            ref: `heads/${branchBase}`,
+            ref: `heads/${baseBranch}`,
         });
+    } catch (error) {
+        const status = statusOf(error);
+        if (status === 404) {
+            throw new ApiError(404, `Base branch "${baseBranch}" does not exist`);
+        }
+        throw error;
+    }
 
+    try {
         await octokit.rest.git.createRef({
             owner,
             repo,
             ref: `refs/heads/${targetBranch}`,
             sha: baseRef.data.object.sha,
         });
-
-        return {
-            headSha: baseRef.data.object.sha,
-            createdBranch: true,
-            baseBranch: branchBase,
-        };
     } catch (error) {
-        const status = statusOf(error);
-
-        if (status === 422) {
-            const targetRef = await octokit.rest.git.getRef({
-                owner,
-                repo,
-                ref: `heads/${targetBranch}`,
-            });
-
-            return {
-                headSha: targetRef.data.object.sha,
-                createdBranch: false,
-                baseBranch: branchBase,
-            };
+        if (statusOf(error) === 422) {
+            throw new ApiError(409, `Branch "${targetBranch}" already exists`);
         }
-
-        if (status !== 404) {
-            throw error;
-        }
+        throw error;
     }
-
-    if (baseBranch) {
-        throw new ApiError(404, `Base branch "${baseBranch}" does not exist`);
-    }
-
-    let hasBranches = false;
-    try {
-        const existingBranches = await octokit.rest.repos.listBranches({
-            owner,
-            repo,
-            per_page: 1,
-            page: 1,
-        });
-        hasBranches = existingBranches.data.length > 0;
-    } catch (error) {
-        if (statusOf(error) !== 409) {
-            throw error;
-        }
-    }
-
-    if (hasBranches) {
-        throw new ApiError(404, `Base branch "${branchBase}" does not exist`);
-    }
-
-    const tree = await octokit.rest.git.createTree({
-        owner,
-        repo,
-        tree: [],
-    });
-
-    const commit = await octokit.rest.git.createCommit({
-        owner,
-        repo,
-        message: `Initialize ${targetBranch}`,
-        tree: tree.data.sha,
-        parents: [],
-    });
-
-    await octokit.rest.git.createRef({
-        owner,
-        repo,
-        ref: `refs/heads/${targetBranch}`,
-        sha: commit.data.sha,
-    });
 
     return {
-        headSha: commit.data.sha,
+        headSha: baseRef.data.object.sha,
         createdBranch: true,
-        baseBranch: branchBase,
     };
 }

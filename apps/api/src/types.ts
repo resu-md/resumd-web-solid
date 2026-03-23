@@ -76,8 +76,6 @@ export type FilesResponse = {
 // POST `/api/save`
 export type SaveRepoRequest = {
     targetBranch: string;
-    baseBranch?: string;
-    createBranchIfMissing?: boolean;
     expectedHeadSha?: string;
     message?: string;
     files: {
@@ -97,4 +95,18 @@ export type SaveRepoResponse = {
         markdown: string;
         css: string;
     };
+};
+
+// POST `/api/branch`
+export type BranchOutRequest = {
+    targetBranch: string;
+    baseBranch: string;
+};
+
+export type BranchOutResponse = {
+    ok: true;
+    branch: string;
+    baseBranch: string;
+    headSha: string;
+    createdBranch: boolean;
 };

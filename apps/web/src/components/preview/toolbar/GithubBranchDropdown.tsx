@@ -1,13 +1,49 @@
+import { For, type JSX, Show, createSignal, splitProps } from "solid-js";
 import clsx from "clsx";
-import { For, Show } from "solid-js";
-import { DropdownMenu } from "@kobalte/core/dropdown-menu";
-import { FiChevronDown, FiExternalLink, FiGitBranch, FiRefreshCw } from "solid-icons/fi";
 import { useSelectedRepository } from "@/contexts/github/GithubContext";
-
-// TODO: "duplicate" and "navigate to" buttons with tooltips
+import { useCreateGithubBranch } from "@/contexts/github/useCreateGithubBranch";
+import { validateBranchName } from "@/lib/branch-name";
+import { DropdownMenu } from "@kobalte/core/dropdown-menu";
+import { Tooltip } from "@kobalte/core/tooltip";
+import { FiChevronDown, FiExternalLink, FiGitBranch, FiRefreshCw } from "solid-icons/fi";
 
 export default function GithubBranchDropdown() {
     const { selectedRepository, branches, selectedBranch, setSelectedBranch } = useSelectedRepository();
+    const { createBranch, isCreatingBranch } = useCreateGithubBranch();
+
+    const promptForBranchName = (baseBranch: string): string | null => {
+        while (true) {
+            const input = prompt(`New branch name (from ${baseBranch}):`);
+            if (input === null) return null;
+
+            const validation = validateBranchName(input);
+            if (!validation.ok) {
+                alert(validation.error);
+                continue;
+            }
+            if (validation.normalized === baseBranch) {
+                alert("Branch name must be different from the base branch.");
+                continue;
+            }
+            if (branches.items()?.some((branch) => branch.name === validation.normalized)) {
+                alert(`Branch "${validation.normalized}" already exists.`);
+                continue;
+            }
+
+            return validation.normalized;
+        }
+    };
+
+    const handleBranchOut = async (baseBranch: string) => {
+        if (isCreatingBranch()) return;
+        const repository = selectedRepository();
+        if (!repository) return;
+
+        const newBranchName = promptForBranchName(baseBranch);
+        if (!newBranchName) return;
+
+        await createBranch(baseBranch, newBranchName);
+    };
 
     return (
         <Show when={selectedRepository() !== null}>
@@ -67,10 +103,26 @@ export default function GithubBranchDropdown() {
                                         onSelect={() => setSelectedBranch(branch)}
                                     >
                                         <span class="font-mono">{branch.name}</span>
-                                        <div class="flex gap-1.75">
-                                            {/* <WithTooltip
-                                                tooltip="Branch out"
+                                        <div class="flex gap-2">
+                                            <WithTooltip
+                                                tooltip={
+                                                    <>
+                                                        Branch out from <span class="font-mono">{branch.name}</span>
+                                                    </>
+                                                }
+                                                as="button"
+                                                type="button"
+                                                aria-label={`Branch out from ${branch.name}`}
                                                 class="hit-area-1 opacity-0 group-data-highlighted:opacity-30 hover:opacity-100"
+                                                onPointerDown={(event) => {
+                                                    event.preventDefault();
+                                                    event.stopPropagation();
+                                                }}
+                                                onClick={(event) => {
+                                                    event.preventDefault();
+                                                    event.stopPropagation();
+                                                    void handleBranchOut(branch.name);
+                                                }}
                                             >
                                                 <svg
                                                     stroke-width="0"
@@ -84,7 +136,7 @@ export default function GithubBranchDropdown() {
                                                 >
                                                     <path d="m14 4 2.29 2.29-2.88 2.88 1.42 1.42 2.88-2.88L20 10V4zm-4 0H4v6l2.29-2.29 4.71 4.7V20h2v-8.41l-5.29-5.3z"></path>
                                                 </svg>
-                                            </WithTooltip> */}
+                                            </WithTooltip>
                                             <WithTooltip
                                                 as="a"
                                                 tooltip="Open on Github"
@@ -111,12 +163,9 @@ export default function GithubBranchDropdown() {
     );
 }
 
-import { Tooltip } from "@kobalte/core/tooltip";
-import { type JSX, createSignal, splitProps } from "solid-js";
-
 type WithTooltipBaseProps<TAs extends keyof JSX.IntrinsicElements> = {
     children?: JSX.Element;
-    tooltip: string;
+    tooltip: JSX.Element;
     class: string;
     as?: TAs;
 };

@@ -43,9 +43,12 @@ export function ensureBranchName(branch: string, fieldName: string): string {
     if (
         !normalized ||
         normalized.length > 255 ||
+        normalized === "@" ||
+        /[\x00-\x20\x7f]/.test(normalized) ||
         normalized.startsWith("/") ||
         normalized.endsWith("/") ||
         normalized.includes("..") ||
+        normalized.includes("//") ||
         normalized.includes(" ") ||
         normalized.includes("~") ||
         normalized.includes("^") ||
@@ -55,7 +58,9 @@ export function ensureBranchName(branch: string, fieldName: string): string {
         normalized.includes("[") ||
         normalized.includes("\\") ||
         normalized.includes("@{") ||
-        normalized.endsWith(".")
+        normalized.endsWith(".") ||
+        normalized.split("/").some((part) => part.startsWith(".")) ||
+        normalized.split("/").some((part) => part.endsWith(".lock"))
     ) {
         throw new ApiError(400, `${fieldName} is not a valid branch name`);
     }

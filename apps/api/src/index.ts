@@ -2,10 +2,18 @@ import { Octokit } from "@octokit/rest";
 import { Hono } from "hono";
 import { cors } from "hono/cors";
 import { z } from "zod";
-import type { BootstrapResponse, RepositoriesResponse, SaveRepoRequest, SaveRepoResponse } from "./types.js";
+import type {
+    BootstrapResponse,
+    BranchOutRequest,
+    BranchOutResponse,
+    RepositoriesResponse,
+    SaveRepoRequest,
+    SaveRepoResponse,
+} from "./types.js";
 import {
     assertRepoAccessible,
     ensureTargetBranch,
+    createBranchFromBase,
     getRepositoryInformation,
     hasAuthorizedRepos,
     listBranchesForRepo,
@@ -42,8 +50,6 @@ import {
 
 const SaveRepoRequestSchema: z.ZodType<SaveRepoRequest> = z.object({
     targetBranch: z.string().trim().min(1),
-    baseBranch: z.string().trim().min(1).optional(),
-    createBranchIfMissing: z.boolean().optional(),
     expectedHeadSha: z.string().trim().min(1).optional(),
     message: z.string().trim().min(1).optional(),
     files: z.object({
@@ -52,6 +58,11 @@ const SaveRepoRequestSchema: z.ZodType<SaveRepoRequest> = z.object({
         markdownPath: z.string().trim().min(1),
         cssPath: z.string().trim().min(1),
     }),
+});
+
+const BranchOutRequestSchema: z.ZodType<BranchOutRequest> = z.object({
+    targetBranch: z.string().trim().min(1),
+    baseBranch: z.string().trim().min(1),
 });
 
 const DEFAULT_PAGE = 1;
@@ -310,23 +321,16 @@ app.post("/api/save", async (c) => {
 
     const body = await parseJsonBody(c, SaveRepoRequestSchema);
     const targetBranch = ensureBranchName(body.targetBranch, "targetBranch");
-    const baseBranch = body.baseBranch ? ensureBranchName(body.baseBranch, "baseBranch") : undefined;
 
     const userOctokit = await requireUserOctokit(c, runtime);
     await assertRepoAccessible(userOctokit, owner, repo);
 
     const botOctokit = await requireInstallationOctokit(runtime, owner, repo);
-    const repoInfo = await botOctokit.rest.repos.get({ owner, repo });
-    const defaultBranch = repoInfo.data.default_branch;
-
     const branchState = await ensureTargetBranch({
         octokit: botOctokit,
         owner,
         repo,
         targetBranch,
-        defaultBranch,
-        baseBranch,
-        createBranchIfMissing: body.createBranchIfMissing ?? false,
     });
 
     if (body.expectedHeadSha && body.expectedHeadSha !== branchState.headSha) {
@@ -416,6 +420,38 @@ app.post("/api/save", async (c) => {
             markdown: markdownPath,
             css: cssPath,
         },
+    };
+
+    return c.json(response);
+});
+
+app.post("/api/branch", async (c) => {
+    const runtime = requireRuntime(c);
+    const owner = requireQueryParam(c, "owner");
+    const repo = requireQueryParam(c, "repo");
+
+    const body = await parseJsonBody(c, BranchOutRequestSchema);
+    const targetBranch = ensureBranchName(body.targetBranch, "targetBranch");
+    const baseBranch = ensureBranchName(body.baseBranch, "baseBranch");
+
+    const userOctokit = await requireUserOctokit(c, runtime);
+    await assertRepoAccessible(userOctokit, owner, repo);
+
+    const botOctokit = await requireInstallationOctokit(runtime, owner, repo);
+    const branchResult = await createBranchFromBase({
+        octokit: botOctokit,
+        owner,
+        repo,
+        targetBranch,
+        baseBranch,
+    });
+
+    const response: BranchOutResponse = {
+        ok: true,
+        branch: targetBranch,
+        baseBranch,
+        headSha: branchResult.headSha,
+        createdBranch: branchResult.createdBranch,
     };
 
     return c.json(response);
