@@ -8,7 +8,7 @@ import type {
     RepositoryInformation,
 } from "@resumd/api/types";
 import { useQuery } from "@tanstack/solid-query";
-import { apiFetch, apiUrl, withSearch } from "@/lib/fetch";
+import { ApiError, apiFetch, apiUrl, withSearch } from "@/lib/fetch";
 import { useParams, useSearchParams } from "@solidjs/router";
 import queryClient, { clearPersistedQueryClient } from "@/lib/query-client";
 
@@ -83,6 +83,15 @@ export function GithubProvider(props: { children?: JSXElement }) {
 
     const user = createMemo(() => {
         if (bootstrapQuery.isPending) return undefined;
+
+        if (bootstrapQuery.error) {
+            if (bootstrapQuery.error instanceof ApiError && bootstrapQuery.error.status === 401) {
+                return null;
+            }
+
+            throw bootstrapQuery.error;
+        }
+
         return bootstrapQuery.data?.user ?? null;
     });
 
