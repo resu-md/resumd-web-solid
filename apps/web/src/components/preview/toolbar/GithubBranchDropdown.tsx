@@ -62,9 +62,7 @@ export default function GithubBranchDropdown() {
                                     <DropdownMenu.Item
                                         class={clsx(
                                             "group mx-1 flex cursor-pointer items-center justify-between gap-1.5 rounded-[10px] px-2.5 py-0.75 pr-2.25 outline-none",
-                                            selectedBranch.information()?.name === branch.name
-                                                ? "bg-linear-to-b from-[#4da3ff] to-[#007aff] text-white shadow-[inset_0_0_1px_1px_#ffffff33,0_2px_20px_#0000000a]"
-                                                : "data-highlighted:bg-fill-tertiary",
+                                            selectedBranch.information()?.name === branch.name && "bg-fill-secondary",
                                         )}
                                         onSelect={() => setSelectedBranch(branch)}
                                     >
@@ -91,10 +89,10 @@ export default function GithubBranchDropdown() {
                                                 as="a"
                                                 tooltip="Open on Github"
                                                 class={clsx(
-                                                    "hit-area-1.5 hit-area-t-1.75 opacity-0 transition-colors group-data-highlighted:opacity-100",
+                                                    "hit-area-1.5 hit-area-t-1.75 hover:text-label-primary opacity-0 transition-colors group-data-highlighted:opacity-100",
                                                     selectedBranch.information()?.name === branch.name
-                                                        ? "text-white/50 hover:text-white"
-                                                        : "text-label-tertiary hover:text-label-primary",
+                                                        ? "text-label-secondary/55"
+                                                        : "text-label-tertiary",
                                                 )}
                                                 href={`${selectedRepository()!.url}/tree/${branch.name}`}
                                                 target="_blank"
