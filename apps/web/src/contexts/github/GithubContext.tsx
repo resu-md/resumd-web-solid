@@ -9,7 +9,7 @@ import type {
 } from "@resumd/api/types";
 import { useQuery } from "@tanstack/solid-query";
 import { apiFetch, apiUrl, withSearch } from "@/lib/fetch";
-import { useParams, useSearchParams } from "@solidjs/router";
+import { useNavigate, useParams } from "@solidjs/router";
 import queryClient, { clearPersistedQueryClient } from "@/lib/query-client";
 
 type FileInformation = {
@@ -54,11 +54,11 @@ const SelectedRepositoryContext = createContext<{
 // TODO: handle selectedRepository becoming null
 
 export function GithubProvider(props: { children?: JSXElement }) {
-    const params = useParams<{ owner: string; repo: string }>();
-    const [searchParams, setSearchParams] = useSearchParams<{ branch?: string }>();
+    const params = useParams<{ owner: string; repo: string; branch?: string }>();
+    const navigate = useNavigate();
 
     /**
-     * useGithubAuth
+     * Route handling
      */
 
     const routeRepository = createMemo(() => {
@@ -67,6 +67,19 @@ export function GithubProvider(props: { children?: JSXElement }) {
         if (!owner || !repo) return null;
         return { owner, repo };
     });
+
+    const isTreeRoute = createMemo(() => params.branch !== undefined);
+
+    const routeBranchName = createMemo(() => {
+        if (params.branch === undefined) return undefined;
+        const rawPath = params.branch.startsWith("/") ? params.branch.slice(1) : params.branch;
+        if (!rawPath) return "";
+        return decodeBranchPath(rawPath);
+    });
+
+    /**
+     * useGithubAuth
+     */
 
     const bootstrapQuery = useQuery(() => {
         const repo = routeRepository();
@@ -131,28 +144,32 @@ export function GithubProvider(props: { children?: JSXElement }) {
 
     // Selected branch
 
-    const searchParamsBranch = createMemo(() => searchParams.branch?.trim() || undefined);
-
-    // Derived value from the searchParams, matches it when is present, fallback branch otherwise
+    // Derived value from the route, matches it when is present, fallback branch otherwise
     const selectedBranch = createMemo(() => {
         const branchList = selectedRepositoryBranches() ?? [];
         if (!branchList.length) return null;
 
-        const searchBranch = searchParamsBranch();
-        if (searchBranch) {
-            const found = branchList.find((branch) => branch.name === searchBranch);
+        const branchFromRoute = routeBranchName();
+        if (branchFromRoute) {
+            const found = branchList.find((branch) => branch.name === branchFromRoute);
             if (found) return found;
         }
 
         return getFallbackBranch(branchList);
     });
 
-    // To update selected branch, we update the URL's ?branch=... param, and the selectedBranch memo will react to it and update accordingly
+    // To update selected branch, we update the URL's /tree/<branch> path, and the selectedBranch memo will react to it
     const setSelectedBranch = (branch: BranchInformation) => {
-        setSearchParams({ branch: branch.name } /*, { replace: true }*/);
+        const repo = routeRepository();
+        if (!repo) return;
+
+        if (!isTreeRoute() && branch.isDefault) return;
+
+        const encodedBranch = encodeBranchPath(branch.name);
+        navigate(`/${repo.owner}/${repo.repo}/tree/${encodedBranch}`);
     };
 
-    // When ?branch=... changes, updates selectedBranch
+    // When /tree/<branch> is invalid or missing, normalize to the default branch
     createEffect(() => {
         const branchList = selectedRepositoryBranches();
         if (!branchList?.length) return;
@@ -160,24 +177,16 @@ export function GithubProvider(props: { children?: JSXElement }) {
         const fallbackBranch = getFallbackBranch(branchList);
         if (!fallbackBranch) return;
 
-        const fromUrl = searchParamsBranch();
-        if (!fromUrl || !branchList.some((b) => b.name === fromUrl)) {
-            setSearchParams({ branch: fallbackBranch.name }, { replace: true });
+        if (!isTreeRoute()) return;
+
+        const branchFromRoute = routeBranchName();
+        if (!branchFromRoute || !branchList.some((b) => b.name === branchFromRoute)) {
+            const repo = routeRepository();
+            if (!repo) return;
+
+            const encodedFallback = encodeBranchPath(fallbackBranch.name);
+            navigate(`/${repo.owner}/${repo.repo}/tree/${encodedFallback}`, { replace: true });
         }
-
-        // const branchFromUrl = searchParamsBranch();
-        // if (!branchFromUrl) return;
-
-        // const branchList = selectedRepositoryBranches();
-        // if (!branchList?.length) return;
-
-        // // Found exact match, do nothing
-        // if (branchList.some((branch) => branch.name === branchFromUrl)) return;
-
-        // const fallbackBranch = getFallbackBranch(branchList);
-        // if (!fallbackBranch) return; // No branches at all, do nothing
-
-        // setSearchParams({ branch: fallbackBranch.name }, { replace: true }); // Update URL to fallback branch
     });
 
     // Selected branch's files
@@ -288,6 +297,24 @@ const normalizeRouteParams = (value: string | undefined) => {
     const normalized = value?.trim();
     return normalized ? normalized : undefined;
 };
+
+const decodeBranchPath = (value: string) =>
+    value
+        .split("/")
+        .map((segment) => {
+            try {
+                return decodeURIComponent(segment);
+            } catch {
+                return segment;
+            }
+        })
+        .join("/");
+
+const encodeBranchPath = (value: string) =>
+    value
+        .split("/")
+        .map((segment) => encodeURIComponent(segment))
+        .join("/");
 
 const getFallbackBranch = (branchList: BranchInformation[]) => {
     return branchList.find((branch) => branch.isDefault) ?? branchList[0] ?? null;

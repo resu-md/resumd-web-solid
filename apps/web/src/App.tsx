@@ -28,7 +28,7 @@ export default function App() {
                     <Route path="/" component={AnonymousEditorPage} />
                     <Route path="/manage" component={ManageRepositoriesPage} />
                     <Route path="/logout" component={LogoutPage} />
-                    <Route path="/:owner/:repo" component={AuthenticatedEditorPage} />
+                    <Route path={["/:owner/:repo", "/:owner/:repo/tree/*branch"]} component={AuthenticatedEditorPage} />
                 </Route>
             </Router>
         </MetaProvider>
