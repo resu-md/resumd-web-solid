@@ -1,4 +1,4 @@
-# [resumemarkdown.com](resumemarkdown.com)
+# [resumemarkdown.com](https://resumemarkdown.com/)
 
 Markdown-based resume editor. Create resumes with Markdown, styled with CSS, and manage their versions using the GitHub integration.
 
