@@ -20,6 +20,7 @@ import CommitButton from "@/components/preview/toolbar/CommitButton";
 import { ApiError } from "@/lib/fetch";
 import { useGithubAuth, useSelectedRepository } from "@/contexts/github/GithubContext";
 import { useCommitFiles } from "@/contexts/github/useGithubCommit";
+import { SESSION_STORAGE_LOGIN_GUARD_KEY } from "@/lib/storage-keys";
 
 export default function AuthenticatedEditorPage() {
     const navigate = useNavigate();
@@ -28,27 +29,45 @@ export default function AuthenticatedEditorPage() {
     const { user, login } = useGithubAuth();
     const { selectedRepository } = useSelectedRepository();
 
-    const shouldRenderEditor = createMemo(() => {
+    const [loginBlocked, setLoginBlocked] = createSignal(false);
+
+    const returnToPath = () => `${location.pathname}${location.search}`;
+    const loginGuardKey = () => SESSION_STORAGE_LOGIN_GUARD_KEY(returnToPath());
+    const shouldRenderEditor = () => {
         if (!user()) return false;
         return selectedRepository() !== null;
-    });
-
-    const redirectMessage = createMemo(() => {
+    };
+    const redirectMessage = () => {
         const currentUser = user();
         if (currentUser === undefined) return "Loading session...";
         if (currentUser === null) return "Redirecting to login...";
         if (selectedRepository() === null) return "Redirecting to manage...";
         return "Loading repository...";
-    });
+    };
 
     createEffect(() => {
+        // User is logged out, attempt a login
         if (user() === null) {
-            login(location.pathname + location.search); // User is logged out, attempt a login
+            // Guard login with session storage flag to prevent redirect loops (in case the server response fails, ...)
+            const guardKey = loginGuardKey();
+            const hasAttemptedLogin = window.sessionStorage.getItem(guardKey);
+            if (hasAttemptedLogin) {
+                setLoginBlocked(true);
+                return;
+            }
+            window.sessionStorage.setItem(guardKey, "1");
+            login(returnToPath()); // Redirect to login with return path, so user comes back to this page after successful login
         }
     });
-
+    createEffect(() => {
+        if (user()) {
+            window.sessionStorage.removeItem(loginGuardKey()); // Clear login guard on successful login
+            if (loginBlocked()) setLoginBlocked(false);
+        }
+    });
     createEffect(() => {
         if (user() && selectedRepository() === null) {
+            // Logged and no repository selected, redirect to manage page
             navigate("/manage", { replace: true });
         }
     });
@@ -57,9 +76,21 @@ export default function AuthenticatedEditorPage() {
         <Show
             when={shouldRenderEditor()}
             fallback={
-                <div class="text-label-secondary flex h-dvh w-dvw items-center justify-center gap-2">
-                    {redirectMessage()}
-                </div>
+                <Show
+                    when={user() === null && loginBlocked()}
+                    fallback={
+                        <div class="text-label-secondary flex h-dvh w-dvw items-center justify-center gap-2">
+                            {redirectMessage()}
+                        </div>
+                    }
+                >
+                    <LoginError
+                        onRetry={() => {
+                            setLoginBlocked(false);
+                            login(returnToPath());
+                        }}
+                    />
+                </Show>
             }
         >
             <GithubResumeProvider>
@@ -69,7 +100,26 @@ export default function AuthenticatedEditorPage() {
     );
 }
 
-// TODO: Needs some good refactoring
+function LoginError(props: { onRetry?: () => void }) {
+    return (
+        <div class="flex h-dvh w-dvw flex-col items-center justify-center p-2">
+            <div class="mt-2 max-w-100">
+                <div class="text-label-primary mb-2 text-lg">Ooops... 😵</div>
+                <div class="text-label-secondary mb-1 text-sm">
+                    The login failed. This can happen if your authentication did not succeed (or if the server is having
+                    some issues). Please try logging in again.
+                </div>
+                <button
+                    class="proeminent-button text-label-secondary mt-4 w-full rounded-full px-5 py-2 text-sm"
+                    onClick={props.onRetry}
+                >
+                    Try logging in again
+                </button>
+            </div>
+        </div>
+    );
+}
+
 function AuthenticatedEditor() {
     const navigate = useNavigate();
     const params = useParams<{ owner: string; repo: string }>();
@@ -242,12 +292,3 @@ function AuthenticatedEditor() {
         </>
     );
 }
-
-// function formatAuthenticatedEditorTabTitle() {
-// const repository = selectedRepository();
-// const branch = selectedBranch.information();
-// const routeRepository = [params.owner, params.repo].filter(Boolean).join("/");
-// const repositoryLabel = repository?.fullName ?? (routeRepository || "Repository");
-// const workspaceLabel = branch ? `${branch.name} · ${repositoryLabel}` : repositoryLabel;
-// return formatDocumentTitle(workspaceLabel);
-// }
