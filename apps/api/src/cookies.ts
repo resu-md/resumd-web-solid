@@ -180,8 +180,14 @@ export async function readSealedCookie<T>(c: ApiContext, runtime: RuntimeService
     return unsealCookieValue<T>(runtime.env.COOKIE_SECRET, raw);
 }
 
-export function clearCookie(c: ApiContext, name: string): void {
-    deleteCookie(c, name, { path: "/" });
+export function clearCookie(c: ApiContext, runtime: RuntimeServices, name: string): void {
+    const useCrossSiteCookies = shouldUseCrossSiteCookies(runtime);
+    deleteCookie(c, name, {
+        path: "/",
+        httpOnly: true,
+        secure: runtime.isProd,
+        sameSite: useCrossSiteCookies ? "None" : "Lax",
+    });
 }
 
 export function randomState(): string {

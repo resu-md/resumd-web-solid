@@ -106,7 +106,7 @@ app.get("/api/auth/start", async (c) => {
         await userOctokit.rest.users.getAuthenticated();
         return c.redirect(`${runtime.env.APP_ORIGIN}${returnTo}`, 302);
     } catch (error) {
-        clearCookie(c, COOKIE_AUTH);
+        clearCookie(c, runtime, COOKIE_AUTH);
         const { url } = runtime.oauthApp.getWebFlowAuthorizationUrl({ state });
         return c.redirect(url, 302);
     }
@@ -130,7 +130,7 @@ app.get("/api/auth/callback", async (c) => {
     if (!stateCookie?.state || stateCookie.state !== state) {
         return c.text("Invalid state", 400);
     }
-    clearCookie(c, COOKIE_STATE);
+    clearCookie(c, runtime, COOKIE_STATE);
 
     const tokenResult = await runtime.oauthApp.createToken({ code, state });
     const auth = ((tokenResult as { authentication?: AuthCookie }).authentication ?? tokenResult) as AuthCookie;
@@ -145,8 +145,8 @@ app.get("/api/auth/callback", async (c) => {
 
     const flowContext = await readSealedCookie<AuthFlowContextCookie>(c, runtime, COOKIE_CTX);
     const returnTo = safeReturnTo(flowContext?.returnTo, "/");
-    clearCookie(c, COOKIE_CTX);
-    clearCookie(c, COOKIE_INSTALL_CTX);
+    clearCookie(c, runtime, COOKIE_CTX);
+    clearCookie(c, runtime, COOKIE_INSTALL_CTX);
 
     let needsRepoAuthorization = false;
     try {
@@ -169,10 +169,11 @@ app.get("/api/auth/callback", async (c) => {
 });
 
 app.post("/api/auth/logout", async (c) => {
-    clearCookie(c, COOKIE_AUTH);
-    clearCookie(c, COOKIE_CTX);
-    clearCookie(c, COOKIE_INSTALL_CTX);
-    clearCookie(c, COOKIE_STATE);
+    const runtime = requireRuntime(c);
+    clearCookie(c, runtime, COOKIE_AUTH);
+    clearCookie(c, runtime, COOKIE_CTX);
+    clearCookie(c, runtime, COOKIE_INSTALL_CTX);
+    clearCookie(c, runtime, COOKIE_STATE);
     return c.json({ ok: true });
 });
 
@@ -186,7 +187,7 @@ app.get("/api/auth/setup", async (c) => {
     try {
         const installContext = await readSealedCookie<AuthInstallContextCookie>(c, runtime, COOKIE_INSTALL_CTX);
         const returnTo = safeReturnTo(installContext?.returnTo, "/");
-        clearCookie(c, COOKIE_INSTALL_CTX);
+        clearCookie(c, runtime, COOKIE_INSTALL_CTX);
         return c.redirect(`${runtime.env.APP_ORIGIN}${returnTo}`, 302);
     } catch (error) {
         // log.warn`Failed to resolve setup redirect: ${error}`;
@@ -209,7 +210,7 @@ app.get("/api/bootstrap", async (c) => {
         octokit = await requireUserOctokit(c, runtime);
     } catch (error) {
         if (statusOf(error) === 401) {
-            clearCookie(c, COOKIE_AUTH);
+            clearCookie(c, runtime, COOKIE_AUTH);
             return c.body(null, 401);
         }
 
@@ -237,7 +238,7 @@ app.get("/api/bootstrap", async (c) => {
         } catch (error) {
             const status = statusOf(error);
             if (status === 401) {
-                clearCookie(c, COOKIE_AUTH);
+                clearCookie(c, runtime, COOKIE_AUTH);
                 return c.body(null, 401);
             }
             // Any other error (404 not found, 409 app not installed, etc.) means the repo is inaccessible
@@ -266,7 +267,7 @@ app.get("/api/repositories", async (c) => {
         octokit = await requireUserOctokit(c, runtime);
     } catch (error) {
         if (statusOf(error) === 401) {
-            clearCookie(c, COOKIE_AUTH);
+            clearCookie(c, runtime, COOKIE_AUTH);
             return c.body(null, 401);
         }
 
@@ -284,7 +285,7 @@ app.get("/api/repositories", async (c) => {
         return c.json(response);
     } catch (error) {
         if (statusOf(error) === 401) {
-            clearCookie(c, COOKIE_AUTH);
+            clearCookie(c, runtime, COOKIE_AUTH);
             return c.body(null, 401);
         }
 
