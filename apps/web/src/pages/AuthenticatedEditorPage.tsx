@@ -86,11 +86,11 @@ function AuthenticatedEditor() {
 
     const [diffMode, setDiffMode] = createSignal(false);
 
-    const tabTitle = createMemo(() => {
-        const formatedRoute = [params.owner, params.repo].filter(Boolean).join("/");
+    const tabTitle = () => {
+        const formattedRoute = [params.owner, params.repo].filter(Boolean).join("/");
         const branch = selectedBranch.information();
-        return formatDocumentTitle(branch ? `${branch.name} · ${formatedRoute}` : formatedRoute);
-    });
+        return formatDocumentTitle(branch ? `${branch.name} · ${formattedRoute}` : formattedRoute);
+    };
     const remoteMarkdown = () => selectedBranch.files.markdown()?.content ?? "";
     const remoteCss = () => selectedBranch.files.css()?.content ?? "";
     const blockEditor = () => selectedBranch.files.loading() || isCommitting(); // TODO: Move logic to context?
