@@ -17,6 +17,11 @@ Markdown-based resume editor. Create resumes with Markdown, styled with CSS, and
 
 [**Watch full demo video**](https://youtu.be/j4TswDhqAjY)
 
+## Roadmap
+
+- [x] GitHub integration _(partial, missing in-app branch creation)_
+- [ ] Template previewer and selector
+
 ## Acknowledgements
 
 This project was hugely inspired by [resume.lol](https://www.resume.lol/) from @evanfrawley.
