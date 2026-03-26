@@ -2,18 +2,22 @@
 import { render } from "solid-js/web";
 import "./index.css";
 import App from "./App.tsx";
-import { restorePersistedQueryClient } from "./lib/query-client";
+import queryClient, { restorePersistedQueryClient } from "./lib/query-client.ts";
+import { QueryClientProvider } from "@tanstack/solid-query";
 
 const root = document.getElementById("root");
 
 async function start() {
-    try {
-        await restorePersistedQueryClient();
-    } catch (error) {
-        console.warn("Failed to restore persisted query cache:", error);
-    }
+    await restorePersistedQueryClient();
 
-    render(() => <App />, root!);
+    render(
+        () => (
+            <QueryClientProvider client={queryClient}>
+                <App />
+            </QueryClientProvider>
+        ),
+        root!,
+    );
 }
 
 void start();

@@ -88,13 +88,23 @@ export function GithubProvider(props: { children?: JSXElement }) {
             queryFn: () =>
                 apiFetch<BootstrapResponse>(withSearch("/api/bootstrap", { owner: repo?.owner, repo: repo?.repo })),
             retry: false,
-            staleTime: 0,
+            // retry: false,
+
+            // Best UX for persisted auth/session bootstrap:
+            // staleTime: Infinity,
+            // refetchOnMount: false,
+            // refetchOnReconnect: false,
+            // refetchOnWindowFocus: false,
         };
     });
 
     const user = createMemo(() => {
         if (bootstrapQuery.isPending) return undefined;
         return bootstrapQuery.data?.user ?? null;
+    });
+
+    createEffect(() => {
+        console.log("user():", user());
     });
 
     const logout = async () => {
@@ -104,7 +114,7 @@ export function GithubProvider(props: { children?: JSXElement }) {
         } catch (error) {
             console.error("Logout failed:", error);
         } finally {
-            clearPersistedQueryClient();
+            await clearPersistedQueryClient();
         }
     };
 
@@ -136,9 +146,6 @@ export function GithubProvider(props: { children?: JSXElement }) {
     const isBranchesLoading = createMemo(() => bootstrapQuery.isFetching || bootstrapQuery.isPending);
 
     const refetchBranches = async () => await bootstrapQuery.refetch(); // TODO: what is the consequence of this if selectedRepository changes, current branch gets renamed, etc?
-    createEffect(() => {
-        console.log(isBranchesLoading() ? "Loading branches..." : "Branches loaded");
-    });
 
     // Selected branch
 

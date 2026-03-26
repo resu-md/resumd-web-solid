@@ -2,8 +2,6 @@ import { type JSXElement } from "solid-js";
 import { Route, Router } from "@solidjs/router";
 import { Meta, MetaProvider, Title } from "@solidjs/meta";
 // Context
-import queryClient from "./lib/query-client";
-import { QueryClientProvider } from "@tanstack/solid-query";
 import { ThemeProvider } from "@/contexts/ThemeContext";
 // Pages
 import AuthenticatedEditorPage from "./pages/AuthenticatedEditorPage";
@@ -36,9 +34,5 @@ export default function App() {
 }
 
 function ContextProviders(props: { children?: JSXElement }) {
-    return (
-        <QueryClientProvider client={queryClient}>
-            <ThemeProvider>{props.children}</ThemeProvider>
-        </QueryClientProvider>
-    );
+    return <ThemeProvider>{props.children}</ThemeProvider>;
 }
