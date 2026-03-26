@@ -107,11 +107,17 @@ export default function MonacoDiffEditor(props: { class?: string; activeTabId: s
     });
 
     onCleanup(() => {
+        if (editor) {
+            // Detach models before disposing to avoid "TextModel got disposed" errors.
+            editor.setModel(null);
+            editor.dispose();
+        }
         models?.forEach((tabModel) => {
             tabModel.originalModel.dispose();
             tabModel.modifiedModel.dispose();
         });
-        editor?.dispose();
+        models = undefined;
+        editor = undefined;
     });
 
     return (

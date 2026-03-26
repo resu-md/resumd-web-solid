@@ -135,8 +135,14 @@ export default function MonacoEditor(props: { class?: string; activeTabId: strin
     });
 
     onCleanup(() => {
+        if (editor) {
+            // Detach model before disposing to avoid "TextModel got disposed" errors.
+            editor.setModel(null);
+            editor.dispose();
+        }
         models?.forEach((editorModel) => editorModel.model.dispose());
-        editor?.dispose();
+        models = undefined;
+        editor = undefined;
     });
 
     return (
