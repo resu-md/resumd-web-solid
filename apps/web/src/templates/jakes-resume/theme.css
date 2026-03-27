@@ -2,7 +2,7 @@
 
 @page {
     size: letter;
-    margin: 0.5in;
+    margin: 0.4in 0.5in;
 }
 
 /* meta */
@@ -16,7 +16,6 @@ body {
 h1 {
     margin: 0;
     padding: 0;
-    margin-top: -0.1in;
     text-align: center;
     font-size: 26pt;
 }
@@ -33,7 +32,8 @@ h2::first-letter {
     font-size: 14pt;
 }
 
-h3, h4 {
+h3,
+h4 {
     margin: 0;
     margin-left: 0.15in;
 }
