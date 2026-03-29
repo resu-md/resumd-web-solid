@@ -144,10 +144,10 @@ function AuthenticatedEditor() {
     const remoteMarkdown = () => selectedBranch.files.markdown()?.content ?? "";
     const remoteCss = () => selectedBranch.files.css()?.content ?? "";
     const blockEditor = () => selectedBranch.files.loading() || isCommitting(); // TODO: Move logic to context?
-    const hasDiff = createMemo(() => {
+    const hasDiff = () => {
         // if (selectedBranch.files.loading()) return false;
         return draftMarkdown() !== remoteMarkdown() || draftCss() !== remoteCss();
-    });
+    };
     const diffStats = createMemo(() => {
         if (!hasDiff()) return { added: 0, removed: 0 };
 

@@ -1,4 +1,4 @@
-import { createContext, createMemo, useContext, type Accessor, type JSXElement } from "solid-js";
+import { createContext, useContext, type Accessor, type JSXElement } from "solid-js";
 import { GITHUB_WORKSPACE_STORAGE_KEYS } from "@/lib/storage-keys";
 import { useSelectedRepository } from "./GithubContext";
 import { createDraftablePersistedSignal } from "./createDraftablePersistedSignal";
@@ -24,11 +24,10 @@ export function GithubResumeProvider(props: { children?: JSXElement }) {
         selectedBranch: { information: selectedBranch, files },
     } = useSelectedRepository();
 
-    const workspaceStorageKey = createMemo(() =>
+    const workspaceStorageKey = () =>
         selectedBranch() && selectedRepository()
             ? GITHUB_WORKSPACE_STORAGE_KEYS.WORKSPACE(selectedRepository()!.fullName, selectedBranch()!.name)
-            : "",
-    );
+            : "";
 
     const getRemoteDoc = (): ResumeDoc => ({
         markdown: files.markdown()?.content ?? "",

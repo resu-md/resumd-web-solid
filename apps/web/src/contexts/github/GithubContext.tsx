@@ -61,19 +61,19 @@ export function GithubProvider(props: { children?: JSXElement }) {
      * Route handling
      */
 
-    const routeRepository = createMemo(() => {
+    const routeRepository = () => {
         const owner = normalizeRouteParams(params.owner);
         const repo = normalizeRouteParams(params.repo);
         if (!owner || !repo) return null;
         return { owner, repo };
-    });
+    };
 
-    const routeBranchName = createMemo(() => {
+    const routeBranchName = () => {
         if (params.branch === undefined) return undefined;
         const rawPath = params.branch.startsWith("/") ? params.branch.slice(1) : params.branch;
         if (!rawPath) return "";
         return decodeBranchPath(rawPath);
-    });
+    };
 
     /**
      * useGithubAuth
@@ -92,10 +92,10 @@ export function GithubProvider(props: { children?: JSXElement }) {
         };
     });
 
-    const user = createMemo(() => {
+    const user = () => {
         if (bootstrapQuery.isPending) return undefined;
         return bootstrapQuery.data?.user ?? null;
-    });
+    };
 
     const logout = async () => {
         await queryClient.cancelQueries();
@@ -121,19 +121,19 @@ export function GithubProvider(props: { children?: JSXElement }) {
 
     // Selected repository information
 
-    const selectedRepositoryInformation = createMemo(() => {
+    const selectedRepositoryInformation = () => {
         if (bootstrapQuery.isPending) return undefined;
         return bootstrapQuery.data?.selected?.repository ?? null;
-    });
+    };
 
     // Selected repository's branches
 
-    const selectedRepositoryBranches = createMemo(() => {
+    const selectedRepositoryBranches = () => {
         if (bootstrapQuery.isPending) return undefined;
         return bootstrapQuery.data?.selected?.branches.items ?? null;
-    });
+    };
 
-    const isBranchesLoading = createMemo(() => bootstrapQuery.isFetching || bootstrapQuery.isPending);
+    const isBranchesLoading = () => bootstrapQuery.isFetching || bootstrapQuery.isPending;
 
     const refetchBranches = async () => await bootstrapQuery.refetch(); // TODO: what is the consequence of this if selectedRepository changes, current branch gets renamed, etc?
     createEffect(() => {
@@ -143,7 +143,7 @@ export function GithubProvider(props: { children?: JSXElement }) {
     // Selected branch
 
     // Derived value from the route, matches it when is present, fallback branch otherwise
-    const selectedBranch = createMemo(() => {
+    const selectedBranch = () => {
         const branchList = selectedRepositoryBranches() ?? [];
         if (!branchList.length) return null;
 
@@ -154,7 +154,7 @@ export function GithubProvider(props: { children?: JSXElement }) {
         }
 
         return getFallbackBranch(branchList);
-    });
+    };
 
     // To update selected branch, we update the URL's /tree/<branch> path, and the selectedBranch memo will react to it
     const setSelectedBranch = (branch: BranchInformation) => {
@@ -187,7 +187,7 @@ export function GithubProvider(props: { children?: JSXElement }) {
     // Selected branch's files
 
     // Object if selected repository and branch are resolved, null if not resolved yet
-    const currentWorkspace = createMemo(() => {
+    const currentWorkspace = () => {
         const repo = selectedRepositoryInformation();
         const branchName = selectedBranch()?.name;
         if (!repo || !branchName) return null;
@@ -198,7 +198,7 @@ export function GithubProvider(props: { children?: JSXElement }) {
             repo,
             branchName,
         };
-    });
+    };
 
     const filesQuery = useQuery(() => {
         const workspace = currentWorkspace();
@@ -237,11 +237,11 @@ export function GithubProvider(props: { children?: JSXElement }) {
 
         return previous; // Still loading, keep previous files
     });
-    const css = createMemo(() => files()?.files.css);
-    const markdown = createMemo(() => files()?.files.markdown);
-    const commitSha = createMemo(() => files()?.commitSha);
+    const css = () => files()?.files.css;
+    const markdown = () => files()?.files.markdown;
+    const commitSha = () => files()?.commitSha;
 
-    const isFilesLoading = createMemo(() => {
+    const isFilesLoading = () => {
         const workspace = currentWorkspace();
         if (!workspace) {
             if (selectedRepositoryInformation() === undefined || selectedRepositoryBranches() === undefined)
@@ -249,7 +249,7 @@ export function GithubProvider(props: { children?: JSXElement }) {
             return false;
         }
         return files()?.workspaceKey !== workspace.workspaceKey || filesQuery.isPending; // TODO: isFetching?
-    });
+    };
 
     const refetchFiles = async () => await filesQuery.refetch();
 
