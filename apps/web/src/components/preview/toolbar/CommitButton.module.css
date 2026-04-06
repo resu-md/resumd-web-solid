@@ -33,14 +33,28 @@
 
 .actions {
     pointer-events: none;
-    transform: translateY(6px) rotateX(-18deg);
-    transform-origin: center bottom;
     opacity: 0;
-    filter: blur(2px);
 }
 
 .swapArea:hover .actions {
     pointer-events: auto;
+    opacity: 1;
+}
+
+.actionIcon {
+    backface-visibility: hidden;
+    will-change: transform, opacity, filter;
+    transform: translateY(6px) rotateX(-18deg);
+    transform-origin: center bottom;
+    opacity: 0;
+    filter: blur(2px);
+    transition:
+        transform 200ms ease-out,
+        opacity 200ms ease-out,
+        filter 200ms ease-out;
+}
+
+.swapArea:hover .actionIcon {
     transform: translateY(0) rotateX(0deg);
     opacity: 1;
     filter: blur(0);

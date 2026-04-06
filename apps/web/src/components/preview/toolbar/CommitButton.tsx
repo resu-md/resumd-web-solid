@@ -106,7 +106,7 @@ export default function CommitButton(props: {
 
                 <div
                     class={clsx(
-                        "absolute inset-0 flex h-full items-center whitespace-nowrap transition-[opacity,transform,filter] duration-200 ease-out motion-reduce:transition-none",
+                        "absolute inset-0 flex h-full items-center whitespace-nowrap transition-opacity duration-200 ease-out motion-reduce:transition-none",
                         styles.actions,
                     )}
                 >
@@ -122,8 +122,8 @@ export default function CommitButton(props: {
                         onClick={handleShowDiffToggle}
                         disabled={!hasChanges()}
                     >
-                        <Show when={!showDiff()} fallback={<IoEye class="size-4" />}>
-                            <IoEyeOff class="size-4" />
+                        <Show when={!showDiff()} fallback={<IoEye class={clsx("size-4", styles.actionIcon)} />}>
+                            <IoEyeOff class={clsx("size-4", styles.actionIcon)} />
                         </Show>
                     </button>
 
@@ -139,23 +139,25 @@ export default function CommitButton(props: {
                         onClick={handleUndo}
                         disabled={!hasChanges()}
                     >
-                        <svg
-                            stroke-width="2"
-                            height="1em"
-                            width="1em"
-                            xmlns="http://www.w3.org/2000/svg"
-                            fill="none"
-                            stroke="currentColor"
-                            stroke-linecap="round"
-                            stroke-linejoin="round"
-                            viewBox="0 0 24 24"
-                            color="currentColor"
-                            style="overflow: visible;"
-                            class="size-4.5"
-                        >
-                            <path d="m9 14-4-4 4-4"></path>
-                            <path d="M5 10h11a4 4 0 1 1 0 8h-1"></path>
-                        </svg>
+                        <span class={styles.actionIcon}>
+                            <svg
+                                stroke-width="2"
+                                height="1em"
+                                width="1em"
+                                xmlns="http://www.w3.org/2000/svg"
+                                fill="none"
+                                stroke="currentColor"
+                                stroke-linecap="round"
+                                stroke-linejoin="round"
+                                viewBox="0 0 24 24"
+                                color="currentColor"
+                                style="overflow: visible;"
+                                class="size-4.5"
+                            >
+                                <path d="m9 14-4-4 4-4"></path>
+                                <path d="M5 10h11a4 4 0 1 1 0 8h-1"></path>
+                            </svg>
+                        </span>
                     </button>
                 </div>
             </div>
