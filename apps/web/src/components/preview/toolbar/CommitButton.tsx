@@ -82,7 +82,7 @@ export default function CommitButton(props: {
 
             <div
                 class={clsx(
-                    "relative flex h-8 items-center overflow-hidden rounded-r-full transition-[width] duration-200 ease-out motion-reduce:transition-none",
+                    "relative flex h-7.5 items-center overflow-hidden rounded-r-full transition-[width] duration-200 ease-out motion-reduce:transition-none",
                     styles.swapArea,
                 )}
                 style={

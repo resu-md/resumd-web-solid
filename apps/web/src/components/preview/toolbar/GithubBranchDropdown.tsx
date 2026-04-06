@@ -12,7 +12,7 @@ export default function GithubBranchDropdown() {
     return (
         <Show when={selectedRepository() !== null}>
             <DropdownMenu placement="bottom-start" gutter={8}>
-                <DropdownMenu.Trigger class="proeminent-button text-primary flex h-8 items-center gap-2 rounded-full text-sm">
+                <DropdownMenu.Trigger class="proeminent-button text-primary flex h-7.75 items-center gap-2 rounded-full text-sm">
                     <span class="ml-3 flex items-center">
                         <FiGitBranch class="text-label-secondary mr-1.25" />
                         <Show
@@ -25,7 +25,7 @@ export default function GithubBranchDropdown() {
                     <FiChevronDown class="text-label-tertiary mr-2 size-5 translate-y-px" />
                 </DropdownMenu.Trigger>
                 <DropdownMenu.Portal>
-                    <DropdownMenu.Content class="bg-system-primary/95 proeminent-button flex max-h-[70vh] flex-col rounded-[13px] py-1 text-sm backdrop-blur-lg outline-none dropdown-menu__content">
+                    <DropdownMenu.Content class="bg-system-primary/95 proeminent-button flex max-h-[70vh] flex-col rounded-[13px] py-1 text-sm backdrop-blur-lg outline-none">
                         <div class="mx-1 flex items-center justify-between gap-0.5 px-2.5 pt-1 pb-1.25">
                             <span class="text-label-tertiary mr-2 text-xs font-semibold">
                                 <a href={selectedRepository()!.url} target="_blank" rel="noopener noreferrer">
