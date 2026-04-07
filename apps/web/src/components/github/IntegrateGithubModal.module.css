@@ -1,18 +1,19 @@
-.modalDiagramContainer {
-    /* --mask-solid-end: 63%;
-    --mask-fade-end: 70%; */
-    --mask-solid-end: 63%;
-    --mask-fade-end: 70%;
+.backgroundMask {
+    opacity: 1;
+    /* transition: opacity 0.2s ease-in-out; */
+
+    --mask-fade-end: 28%;
+    --mask-solid-end: 19%;
 
     mask-image: linear-gradient(
-        to bottom,
+        to top,
         rgba(0, 0, 0, 1) 0%,
         rgba(0, 0, 0, 1) var(--mask-solid-end),
         rgba(0, 0, 0, 0) var(--mask-fade-end),
         rgba(0, 0, 0, 0) 100%
     );
     -webkit-mask-image: linear-gradient(
-        to bottom,
+        to top,
         rgba(0, 0, 0, 1) 0%,
         rgba(0, 0, 0, 1) var(--mask-solid-end),
         rgba(0, 0, 0, 0) var(--mask-fade-end),
@@ -24,40 +25,6 @@
     -webkit-mask-size: 100% 100%;
 }
 
-/* 
-.screenFrame {
-    position: relative;
-    --frame-padding: 0.375rem;
+.hidden {
+    opacity: 0;
 }
-
-.screenFrame::before {
-    content: "";
-    position: absolute;
-    inset: 0;
-    padding: var(--frame-padding);
-    border-radius: inherit;
-    background: rgba(0, 0, 0, 0.1);
-    pointer-events: none;
-    z-index: 0;
-
-    mask:
-        linear-gradient(#000, #000) content-box,
-        linear-gradient(#000, #000);
-    -webkit-mask:
-        linear-gradient(#000, #000) content-box,
-        linear-gradient(#000, #000);
-    mask-composite: exclude;
-    -webkit-mask-composite: xor;
-    mask-repeat: no-repeat;
-    -webkit-mask-repeat: no-repeat;
-    mask-size: 100% 100%;
-    -webkit-mask-size: 100% 100%;
-}
-
-.screenFrame > * {
-    position: relative;
-    z-index: 1;
-}
-
-.screenInside {
-} */
