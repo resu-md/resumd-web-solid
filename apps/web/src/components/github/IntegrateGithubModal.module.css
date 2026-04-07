@@ -1,9 +1,6 @@
 .backgroundMask {
-    opacity: 1;
-    /* transition: opacity 0.2s ease-in-out; */
-
-    --mask-fade-end: 28%;
-    --mask-solid-end: 19%;
+    --mask-fade-end: 22%;
+    --mask-solid-end: 17%;
 
     mask-image: linear-gradient(
         to top,
@@ -25,6 +22,45 @@
     -webkit-mask-size: 100% 100%;
 }
 
-.hidden {
-    opacity: 0;
+.maskCompact {
+    --mask-fade-end: 15%;
+    --mask-solid-end: 10%;
+}
+
+.videoFrame {
+    --zoom-scale: 1;
+    --zoom-x: 0%;
+    --zoom-y: 0%;
+    transform-origin: center;
+    transform: translate(var(--zoom-x), var(--zoom-y)) scale(var(--zoom-scale));
+    transition: transform 420ms cubic-bezier(0.22, 0.61, 0.36, 1);
+    will-change: transform;
+}
+
+.videoViewport {
+    overflow: hidden;
+}
+
+.zoomTopRight {
+    --zoom-scale: 1.4;
+    --zoom-x: -20%;
+    --zoom-y: 20%;
+}
+
+.zoomCenter {
+    --zoom-scale: 1.1;
+    --zoom-x: 0%;
+    --zoom-y: 2.5%;
+}
+
+.zoomBottomRight {
+    --zoom-scale: 1.4;
+    --zoom-x: -25%;
+    --zoom-y: -10%;
+}
+
+.zoomRest {
+    --zoom-scale: 1;
+    --zoom-x: 0%;
+    --zoom-y: 0%;
 }

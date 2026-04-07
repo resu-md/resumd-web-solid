@@ -3,7 +3,7 @@ import styles from "./IntegrateGithubModal.module.css";
 import clsx from "clsx";
 import { Dialog } from "@kobalte/core/dialog";
 import cloneRepositoryVideo from "./assets/clone-repository-video.mov";
-import { CgPlayBackwards } from "solid-icons/cg";
+import { CgPlayBackwards, CgUndo } from "solid-icons/cg";
 
 const TEMPLATE_URL = "https://github.com/resumemarkdown/template-jakes-resume";
 
@@ -16,7 +16,7 @@ export default function GithubIntegrationInstructionsModal() {
                 <Dialog.Overlay class="fixed inset-0 z-50 bg-black/40 backdrop-blur-sm" />
                 <div class="fixed inset-0 z-50 flex items-center justify-center">
                     <Dialog.Content class="proeminent-button relative flex aspect-16/12 w-170 flex-col overflow-hidden rounded-3xl shadow-xl outline-none">
-                        <div class={clsx("absolute z-0 size-full px-5 pt-5", styles.modalDiagramContainer)}>
+                        <div class={clsx("absolute z-0 size-full px-10 pt-5", styles.modalDiagramContainer)}>
                             <VideoGuide step={step()} />
                         </div>
 
@@ -24,18 +24,20 @@ export default function GithubIntegrationInstructionsModal() {
                             class={clsx(
                                 "proeminent-button absolute z-5 size-full",
                                 styles.backgroundMask,
-                                step() < 4 && styles.hidden,
+                                step() < 4 ? styles.maskCompact : styles.maskExpanded,
                             )}
                         />
 
-                        <div class="z-10 flex w-full flex-1 items-end justify-between gap-5 px-5 pt-5 pb-6">
+                        <div class="z-10 flex w-full flex-1 items-end justify-between gap-5 px-5 pt-5 pb-5">
                             <p class="pb-1 pl-1.5 text-xl text-balance">
                                 <Switch>
-                                    <Match when={step() === 1}>Clone the template repository</Match>
+                                    <Match when={step() === 1}>Create a new repository from the template</Match>
                                     <Match when={step() === 2}>Give it a name</Match>
                                     <Match when={step() === 3}>
                                         Make it private{" "}
-                                        <i class="text-label-secondary font-light">(optional, recommended)</i>
+                                        <i class="text-label-secondary text-sm font-light">
+                                            (optional but recommended)
+                                        </i>
                                     </Match>
                                     <Match when={step() === 4}>
                                         Replace <i class="font-light">github</i>.com with{" "}
@@ -44,8 +46,8 @@ export default function GithubIntegrationInstructionsModal() {
                                         in the cloned resume repository URL
                                     </Match>
                                     <Match when={step() === 5}>
-                                        Authorize ResumeMarkdown to access that repository{" "}
-                                        <i class="text-label-secondary font-light">
+                                        Authorize ResumeMarkdown access to that repository{" "}
+                                        <i class="text-label-secondary text-sm font-light">
                                             (choose "Only selected repositories")
                                         </i>
                                     </Match>
@@ -53,21 +55,32 @@ export default function GithubIntegrationInstructionsModal() {
                             </p>
 
                             <div class="flex items-center gap-3">
-                                <Show when={step() > 1}>
-                                    <button
-                                        class="text-label-tertiary hover:text-label-secondary cursor-pointer px-1 font-medium transition-colors duration-100"
-                                        onClick={() => setStep((prev) => Math.max(prev - 1, 1))}
-                                    >
-                                        <CgPlayBackwards size={20} />
-                                    </button>
-                                </Show>
+                                <Switch>
+                                    <Match when={step() > 1 && step() < 5}>
+                                        <button
+                                            class="text-label-tertiary hover:text-label-secondary cursor-pointer px-0.5 font-medium transition-colors duration-100 select-none"
+                                            onClick={() => setStep((prev) => Math.max(prev - 1, 1))}
+                                        >
+                                            <CgPlayBackwards size={20} />
+                                        </button>
+                                    </Match>
+                                    <Match when={step() === 5}>
+                                        <button
+                                            class="text-label-tertiary hover:text-label-secondary cursor-pointer px-0.5 font-medium transition-colors duration-100 select-none"
+                                            onClick={() => setStep(1)}
+                                        >
+                                            <CgUndo size={20} />
+                                        </button>
+                                    </Match>
+                                </Switch>
 
                                 <button
                                     class="button-blue flex h-9 cursor-pointer items-center rounded-full pr-3 pl-3.5 font-normal"
                                     onClick={() => setStep((prev) => Math.min(prev + 1, 5))}
                                 >
                                     <Switch>
-                                        <Match when={step() < 5}>
+                                        <Match when={step() === 1}>Next</Match>
+                                        <Match when={step() > 1 && step() < 5}>
                                             Next{" "}
                                             <span class="text-gray-5 ml-2 text-sm font-light tabular-nums">
                                                 {step()}/5
@@ -90,7 +103,7 @@ function VideoGuide(props: { step: number }) {
     // If you add more steps, insert their timestamps before Infinity.
     const STEP_BOUNDARIES = [0, 2.41, 6.52, 11.06, Infinity];
     const NORMAL_RATE = 1;
-    const WIND_RATE = 5;
+    const WIND_RATE = 10;
     const TIME_EPSILON = 0.04;
     let videoRef: HTMLVideoElement | undefined;
     let reachedEnd = false;
@@ -101,6 +114,12 @@ function VideoGuide(props: { step: number }) {
 
     const getStepStart = () => STEP_BOUNDARIES[Math.min(Math.max(props.step - 1, 0), MAX_START_INDEX)] ?? 0;
     const getStepEnd = () => STEP_BOUNDARIES[Math.min(Math.max(props.step, 1), LAST_BOUNDARY_INDEX)] ?? Infinity;
+    const getZoomClass = () => {
+        if (props.step === 1) return styles.zoomTopRight;
+        if (props.step === 2) return styles.zoomCenter;
+        if (props.step === 3) return styles.zoomBottomRight;
+        return styles.zoomRest;
+    };
 
     const syncPlayback = () => {
         const video = videoRef;
@@ -177,16 +196,21 @@ function VideoGuide(props: { step: number }) {
     });
 
     return (
-        <div class="ring-gray-4 bg-gray-6 shadow-proeminent rounded-xl p-2 ring">
-            <video
-                ref={videoRef}
-                class="ring-gray-4 rounded-md ring"
-                src={cloneRepositoryVideo}
-                autoplay
-                muted
-                playsinline
-                preload="auto"
-            />
+        <div class={clsx("flex flex-col", styles.videoFrame, getZoomClass())}>
+            <div class="ring-gray-4 bg-gray-6 shadow-proeminent rounded-t-xl p-1.75 pb-1.25 ring">
+                <div class={clsx("ring-gray-4 rounded-t-md ring", styles.videoViewport)}>
+                    <video
+                        ref={videoRef}
+                        class="size-full"
+                        src={cloneRepositoryVideo}
+                        autoplay
+                        muted
+                        playsinline
+                        preload="auto"
+                    />
+                </div>
+            </div>
+            <div class="bg-gray-6 ring-gray-4 shadow-proeminent -mx-7 h-4 rounded-b-lg ring" />
         </div>
     );
 }
