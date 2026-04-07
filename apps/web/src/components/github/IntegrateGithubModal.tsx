@@ -4,8 +4,14 @@ import clsx from "clsx";
 import { Dialog } from "@kobalte/core/dialog";
 import cloneRepositoryVideo from "./assets/clone-repository-video.mov";
 import { CgPlayBackwards, CgUndo } from "solid-icons/cg";
+import RoughAnnotation from "@/components/rough-notation/RoughAnnotation";
 
 const TEMPLATE_URL = "https://github.com/resumemarkdown/template-jakes-resume";
+
+const GITHUB_ANIMATION_DELAY = 400;
+const GITHUB_ANIMATION_DURATION = 250;
+const RESUME_ANIMATION_DELAY = GITHUB_ANIMATION_DELAY + GITHUB_ANIMATION_DURATION + 500;
+const RESUME_ANIMATION_DURATION = 1500;
 
 export default function GithubIntegrationInstructionsModal() {
     const [step, setStep] = createSignal(1);
@@ -31,7 +37,7 @@ export default function GithubIntegrationInstructionsModal() {
                         <div class="z-10 flex w-full flex-1 items-end justify-between gap-5 px-5 pt-5 pb-5">
                             <p class="pb-1 pl-1.5 text-xl text-balance">
                                 <Switch>
-                                    <Match when={step() === 1}>Create a new repository from the template</Match>
+                                    <Match when={step() === 1}>Clone the template</Match>
                                     <Match when={step() === 2}>Give it a name</Match>
                                     <Match when={step() === 3}>
                                         Make it private{" "}
@@ -40,16 +46,41 @@ export default function GithubIntegrationInstructionsModal() {
                                         </i>
                                     </Match>
                                     <Match when={step() === 4}>
-                                        Replace <i class="font-light">github</i>.com with{" "}
-                                        <i class="font-light">resumemarkdown</i>.com
+                                        Replace{" "}
+                                        <RoughAnnotation
+                                            type="strike-through"
+                                            color="#48484a"
+                                            class="font-light"
+                                            delay={GITHUB_ANIMATION_DELAY}
+                                            duration={GITHUB_ANIMATION_DURATION}
+                                            strokeWidth={2}
+                                            padding={2}
+                                            iterations={2}
+                                        >
+                                            github
+                                        </RoughAnnotation>
+                                        .com with{" "}
+                                        <RoughAnnotation
+                                            type="circle"
+                                            color="#ffd600"
+                                            class="font-light"
+                                            delay={RESUME_ANIMATION_DELAY}
+                                            duration={RESUME_ANIMATION_DURATION}
+                                            strokeWidth={2}
+                                            padding={[6, 6]}
+                                            iterations={1}
+                                        >
+                                            resumemarkdown
+                                        </RoughAnnotation>
+                                        .com
                                         <br />
                                         in the cloned resume repository URL
                                     </Match>
                                     <Match when={step() === 5}>
-                                        Authorize ResumeMarkdown access to that repository{" "}
-                                        <i class="text-label-secondary text-sm font-light">
-                                            (choose "Only selected repositories")
-                                        </i>
+                                        Authorize access to that repository{" "}
+                                        <span class="text-label-secondary text-sm font-light">
+                                            Choose "Only selected repositories"
+                                        </span>
                                     </Match>
                                 </Switch>
                             </p>
@@ -79,13 +110,13 @@ export default function GithubIntegrationInstructionsModal() {
                                     onClick={() => setStep((prev) => Math.min(prev + 1, 5))}
                                 >
                                     <Switch>
-                                        <Match when={step() === 1}>Next</Match>
-                                        <Match when={step() > 1 && step() < 5}>
+                                        <Match when={step() < 4}>
                                             Next{" "}
                                             <span class="text-gray-5 ml-2 text-sm font-light tabular-nums">
-                                                {step()}/5
+                                                {step()}/3
                                             </span>
                                         </Match>
+                                        <Match when={step() === 4}>Continue</Match>
                                         <Match when={step() === 5}>Done</Match>
                                     </Switch>
                                 </button>
@@ -103,11 +134,9 @@ function VideoGuide(props: { step: number }) {
     // If you add more steps, insert their timestamps before Infinity.
     const STEP_BOUNDARIES = [0, 2.41, 6.52, 11.06, Infinity];
     const NORMAL_RATE = 1;
-    const WIND_RATE = 10;
     const TIME_EPSILON = 0.04;
     let videoRef: HTMLVideoElement | undefined;
     let reachedEnd = false;
-    let lastStep = props.step;
 
     const LAST_BOUNDARY_INDEX = STEP_BOUNDARIES.length - 1;
     const MAX_START_INDEX = Math.max(0, LAST_BOUNDARY_INDEX - 1);
@@ -135,9 +164,7 @@ function VideoGuide(props: { step: number }) {
         }
 
         if (time + TIME_EPSILON < start) {
-            if (video.playbackRate !== WIND_RATE) video.playbackRate = WIND_RATE;
-            if (video.paused) void video.play().catch(() => undefined);
-            return;
+            video.currentTime = start;
         }
 
         if (video.playbackRate !== NORMAL_RATE) video.playbackRate = NORMAL_RATE;
@@ -183,15 +210,12 @@ function VideoGuide(props: { step: number }) {
     });
 
     createEffect(() => {
-        const currentStep = props.step;
-        if (videoRef && currentStep < lastStep) {
-            const start = getStepStart();
-            reachedEnd = false;
-            videoRef.playbackRate = NORMAL_RATE;
-            videoRef.currentTime = start;
-        }
-        lastStep = currentStep;
+        props.step;
+        if (!videoRef) return;
+        const start = getStepStart();
         reachedEnd = false;
+        videoRef.playbackRate = NORMAL_RATE;
+        videoRef.currentTime = start;
         syncPlayback();
     });
 
