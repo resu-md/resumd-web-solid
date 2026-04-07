@@ -1,8 +1,9 @@
-import { createEffect, createSignal, Match, onCleanup, onMount, Switch } from "solid-js";
+import { createEffect, createSignal, Match, onCleanup, onMount, Show, Switch } from "solid-js";
 import styles from "./IntegrateGithubModal.module.css";
 import clsx from "clsx";
 import { Dialog } from "@kobalte/core/dialog";
 import cloneRepositoryVideo from "./assets/clone-repository-video.mov";
+import { CgPlayBackwards } from "solid-icons/cg";
 
 const TEMPLATE_URL = "https://github.com/resumemarkdown/template-jakes-resume";
 
@@ -14,7 +15,7 @@ export default function GithubIntegrationInstructionsModal() {
             <Dialog.Portal>
                 <Dialog.Overlay class="fixed inset-0 z-50 bg-black/40 backdrop-blur-sm" />
                 <div class="fixed inset-0 z-50 flex items-center justify-center">
-                    <Dialog.Content class="proeminent-button relative flex aspect-16/12 w-160 flex-col overflow-hidden rounded-3xl shadow-xl outline-none">
+                    <Dialog.Content class="proeminent-button relative flex aspect-16/12 w-170 flex-col overflow-hidden rounded-3xl shadow-xl outline-none">
                         <div class={clsx("absolute z-0 size-full px-5 pt-5", styles.modalDiagramContainer)}>
                             <VideoGuide step={step()} />
                         </div>
@@ -27,7 +28,7 @@ export default function GithubIntegrationInstructionsModal() {
                             )}
                         />
 
-                        <div class="z-10 flex w-full flex-1 items-end justify-between gap-5 px-5 pt-5 pb-5">
+                        <div class="z-10 flex w-full flex-1 items-end justify-between gap-5 px-5 pt-5 pb-6">
                             <p class="pb-1 pl-1.5 text-xl text-balance">
                                 <Switch>
                                     <Match when={step() === 1}>Clone the template repository</Match>
@@ -51,18 +52,31 @@ export default function GithubIntegrationInstructionsModal() {
                                 </Switch>
                             </p>
 
-                            <button
-                                class="button-blue flex h-9 cursor-pointer items-center rounded-full pr-3 pl-3.5 font-normal"
-                                onClick={() => setStep((prev) => Math.min(prev + 1, 5))}
-                            >
-                                <Switch>
-                                    <Match when={step() < 5}>
-                                        Next{" "}
-                                        <span class="text-gray-5 ml-2 text-sm font-light tabular-nums">{step()}/5</span>
-                                    </Match>
-                                    <Match when={step() === 5}>Done</Match>
-                                </Switch>
-                            </button>
+                            <div class="flex items-center gap-3">
+                                <Show when={step() > 1}>
+                                    <button
+                                        class="text-label-tertiary hover:text-label-secondary cursor-pointer px-1 font-medium transition-colors duration-100"
+                                        onClick={() => setStep((prev) => Math.max(prev - 1, 1))}
+                                    >
+                                        <CgPlayBackwards size={20} />
+                                    </button>
+                                </Show>
+
+                                <button
+                                    class="button-blue flex h-9 cursor-pointer items-center rounded-full pr-3 pl-3.5 font-normal"
+                                    onClick={() => setStep((prev) => Math.min(prev + 1, 5))}
+                                >
+                                    <Switch>
+                                        <Match when={step() < 5}>
+                                            Next{" "}
+                                            <span class="text-gray-5 ml-2 text-sm font-light tabular-nums">
+                                                {step()}/5
+                                            </span>
+                                        </Match>
+                                        <Match when={step() === 5}>Done</Match>
+                                    </Switch>
+                                </button>
+                            </div>
                         </div>
                     </Dialog.Content>
                 </div>
@@ -80,6 +94,7 @@ function VideoGuide(props: { step: number }) {
     const TIME_EPSILON = 0.04;
     let videoRef: HTMLVideoElement | undefined;
     let reachedEnd = false;
+    let lastStep = props.step;
 
     const LAST_BOUNDARY_INDEX = STEP_BOUNDARIES.length - 1;
     const MAX_START_INDEX = Math.max(0, LAST_BOUNDARY_INDEX - 1);
@@ -149,7 +164,14 @@ function VideoGuide(props: { step: number }) {
     });
 
     createEffect(() => {
-        props.step;
+        const currentStep = props.step;
+        if (videoRef && currentStep < lastStep) {
+            const start = getStepStart();
+            reachedEnd = false;
+            videoRef.playbackRate = NORMAL_RATE;
+            videoRef.currentTime = start;
+        }
+        lastStep = currentStep;
         reachedEnd = false;
         syncPlayback();
     });
