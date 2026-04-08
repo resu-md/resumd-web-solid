@@ -1,12 +1,10 @@
-import { createEffect, createSignal, Match, on, onCleanup, onMount, Show, Switch } from "solid-js";
+import { createEffect, createSignal, Match, onCleanup, onMount, Switch } from "solid-js";
 import styles from "./IntegrateGithubModal.module.css";
 import clsx from "clsx";
 import { Dialog } from "@kobalte/core/dialog";
 import cloneRepositoryVideo from "./assets/clone-repository-video.mov";
-import { CgPlayBackwards, CgUndo } from "solid-icons/cg";
 import RoughAnnotation from "@/components/rough-notation/RoughAnnotation";
 import { IoArrowUpRightBoxOutline } from "solid-icons/io";
-import { FiArrowUpRight } from "solid-icons/fi";
 
 const TEMPLATE_URL = "https://github.com/resumemarkdown/template-jakes-resume";
 
@@ -146,7 +144,7 @@ export default function GithubIntegrationInstructionsModal() {
                                     onClick={() => setStep((prev) => Math.min(prev + 1, 6))}
                                 >
                                     <Switch>
-                                        <Match when={step() === 0}>Ok, continue</Match>
+                                        <Match when={step() === 0}>Continue</Match>
                                         <Match when={step() > 0 && step() < 3}>
                                             Next{" "}
                                             <span class="text-gray-5 ml-2 text-sm font-light tabular-nums">
@@ -177,25 +175,33 @@ export default function GithubIntegrationInstructionsModal() {
 }
 
 function VideoGuide(props: { step: number }) {
-    // Keep the last boundary as Infinity to mean "play until the end".
-    // If you add more steps, insert their timestamps before Infinity.
-    const STEP_BOUNDARIES = [0, 2.41, 6.52, 11.06, Infinity];
+    type StepConfig = {
+        start: number;
+        end?: number;
+        paused?: boolean;
+        zoomClass?: string;
+    };
+
+    const STEP_CONFIG: StepConfig[] = [
+        { start: 0, end: 0, paused: true, zoomClass: styles.zoomRest }, // step 0 (paused)
+        { start: 0, end: 2.41, zoomClass: styles.zoomTopRight }, // step 1
+        { start: 2.41, end: 6.52, zoomClass: styles.zoomCenter }, // step 2
+        { start: 6.52, end: 11.06, zoomClass: styles.zoomBottomRight }, // step 3
+        { start: 11.06, end: Infinity, zoomClass: styles.zoomRest }, // step 4
+        { start: Infinity, end: Infinity, zoomClass: styles.zoomRest }, // step 5
+        { start: Infinity, end: Infinity, zoomClass: styles.zoomRest }, // step 6
+    ];
     const NORMAL_RATE = 1;
     const TIME_EPSILON = 0.04;
     let videoRef: HTMLVideoElement | undefined;
     let reachedEnd = false;
 
-    const LAST_BOUNDARY_INDEX = STEP_BOUNDARIES.length - 1;
-    const MAX_START_INDEX = Math.max(0, LAST_BOUNDARY_INDEX - 1);
-
-    const getStepStart = () => STEP_BOUNDARIES[Math.min(Math.max(props.step - 1, 0), MAX_START_INDEX)] ?? 0;
-    const getStepEnd = () => STEP_BOUNDARIES[Math.min(Math.max(props.step, 1), LAST_BOUNDARY_INDEX)] ?? Infinity;
-    const getZoomClass = () => {
-        if (props.step === 1) return styles.zoomTopRight;
-        if (props.step === 2) return styles.zoomCenter;
-        if (props.step === 3) return styles.zoomBottomRight;
-        return styles.zoomRest;
-    };
+    const getStepConfig = () =>
+        STEP_CONFIG[Math.min(Math.max(props.step, 0), STEP_CONFIG.length - 1)] ?? STEP_CONFIG[0];
+    const getStepStart = () => getStepConfig().start ?? 0;
+    const getStepEnd = () => getStepConfig().end ?? Infinity;
+    const isPausedStep = () => !!getStepConfig().paused;
+    const getZoomClass = () => getStepConfig().zoomClass ?? styles.zoomRest;
 
     const syncPlayback = () => {
         const video = videoRef;
@@ -204,6 +210,11 @@ function VideoGuide(props: { step: number }) {
         const start = getStepStart();
         const end = getStepEnd();
         const time = video.currentTime;
+
+        if (isPausedStep()) {
+            video.pause();
+            return;
+        }
 
         if (!Number.isFinite(end) && reachedEnd) {
             video.pause();
@@ -263,13 +274,17 @@ function VideoGuide(props: { step: number }) {
         reachedEnd = false;
         videoRef.playbackRate = NORMAL_RATE;
         videoRef.currentTime = start;
+        if (isPausedStep()) {
+            videoRef.pause();
+            return;
+        }
         syncPlayback();
     });
 
     return (
         <div class={clsx("flex flex-col", styles.videoFrame, getZoomClass())}>
             <div class="ring-gray-4 bg-gray-6 shadow-proeminent rounded-t-xl p-1.5 pb-1 ring">
-                <div class={clsx("ring-gray-4 rounded-t-md ring", styles.videoViewport)}>
+                <div class={clsx("ring-gray-4 aspect-851/540 rounded-t-md ring", styles.videoViewport)}>
                     <video
                         ref={videoRef}
                         class="size-full"
