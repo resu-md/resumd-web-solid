@@ -1,6 +1,6 @@
 .backgroundMask {
     --mask-fade-end: 22%;
-    --mask-solid-end: 17%;
+    --mask-solid-end: 19%;
 
     mask-image: linear-gradient(
         to top,
@@ -21,10 +21,17 @@
     mask-size: 100% 100%;
     -webkit-mask-size: 100% 100%;
 }
-
-.maskCompact {
-    --mask-fade-end: 18%;
-    --mask-solid-end: 13%;
+.maskMedium {
+    --mask-fade-end: 26%;
+    --mask-solid-end: 23%;
+}
+.maskLarge {
+    --mask-fade-end: 28%;
+    --mask-solid-end: 25%;
+}
+.maskLarger {
+    --mask-fade-end: 30%;
+    --mask-solid-end: 27%;
 }
 
 .videoFrame {
