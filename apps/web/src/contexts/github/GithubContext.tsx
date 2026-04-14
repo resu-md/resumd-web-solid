@@ -136,9 +136,6 @@ export function GithubProvider(props: { children?: JSXElement }) {
     const isBranchesLoading = () => bootstrapQuery.isFetching || bootstrapQuery.isPending;
 
     const refetchBranches = async () => await bootstrapQuery.refetch(); // TODO: what is the consequence of this if selectedRepository changes, current branch gets renamed, etc?
-    createEffect(() => {
-        console.log(isBranchesLoading() ? "Loading branches..." : "Branches loaded");
-    });
 
     // Selected branch
 
