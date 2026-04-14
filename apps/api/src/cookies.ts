@@ -32,18 +32,6 @@ const textDecoder = new TextDecoder();
 
 const cookieKeyCache = new Map<string, Promise<CryptoKey>>();
 
-function shouldUseCrossSiteCookies(runtime: RuntimeServices): boolean {
-    if (!runtime.isProd) return false;
-
-    try {
-        const appOrigin = new URL(runtime.env.APP_ORIGIN).origin;
-        const backendOrigin = new URL(runtime.env.BACKEND_ORIGIN).origin;
-        return appOrigin !== backendOrigin;
-    } catch {
-        return false;
-    }
-}
-
 function bytesToBase64(bytes: Uint8Array): string {
     const bufferGlobal = globalThis as typeof globalThis & {
         Buffer?: {
@@ -160,13 +148,12 @@ export async function setSealedCookie(
     maxAgeSeconds?: number,
 ): Promise<void> {
     const sealed = await sealCookieValue(runtime.env.COOKIE_SECRET, value);
-    const useCrossSiteCookies = shouldUseCrossSiteCookies(runtime);
 
     setCookie(c, name, sealed, {
         path: "/",
         httpOnly: true,
         secure: runtime.isProd,
-        sameSite: useCrossSiteCookies ? "None" : "Lax",
+        sameSite: "Lax",
         maxAge: maxAgeSeconds,
     });
 }
@@ -181,12 +168,11 @@ export async function readSealedCookie<T>(c: ApiContext, runtime: RuntimeService
 }
 
 export function clearCookie(c: ApiContext, runtime: RuntimeServices, name: string): void {
-    const useCrossSiteCookies = shouldUseCrossSiteCookies(runtime);
     deleteCookie(c, name, {
         path: "/",
         httpOnly: true,
         secure: runtime.isProd,
-        sameSite: useCrossSiteCookies ? "None" : "Lax",
+        sameSite: "Lax",
     });
 }
 
