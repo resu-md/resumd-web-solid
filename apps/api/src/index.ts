@@ -7,6 +7,7 @@ import {
     assertRepoAccessible,
     ensureTargetBranch,
     getRepositoryInformation,
+    GitHubApiError,
     hasAuthorizedRepos,
     listBranchesForRepo,
     listInstalledRepos,
@@ -241,8 +242,12 @@ app.get("/api/bootstrap", async (c) => {
                 clearCookie(c, runtime, COOKIE_AUTH);
                 return c.body(null, 401);
             }
-            // Any other error (404 not found, 409 app not installed, etc.) means the repo is inaccessible
-            // log.warn`Failed to load selected repository ${owner}/${repo}: ${error}`;
+            if (status === 404 || status === 409) {
+                // Repository is inaccessible for this user/app installation
+                // Keep selected as null so UI can redirect to /manage.
+            } else {
+                throw error;
+            }
         }
     }
 
@@ -427,6 +432,13 @@ app.notFound((c) => c.json({ error: "Not found" }, 404));
 app.onError((error, c) => {
     if (error instanceof RuntimeEnvError) {
         return c.json("Internal server error (CODE: 1302)", 500);
+    }
+
+    if (error instanceof GitHubApiError) {
+        return c.json(
+            { error: `Internal server error (CODE: ${error.internalCode})` },
+            { status: error.status as any },
+        );
     }
 
     if (error instanceof ApiError) {

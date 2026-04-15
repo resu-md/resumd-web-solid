@@ -1,11 +1,18 @@
 import { Octokit } from "@octokit/rest";
 import type { BranchInformation, EditorFile, EditorFiles, FilesResponse, RepositoryInformation } from "./types.js";
-import {
-    type ApiContext,
-    type RuntimeServices,
-} from "./runtime.js";
+import { type ApiContext, type RuntimeServices } from "./runtime.js";
 import { ApiError, statusOf } from "./utils.js";
 import { type AuthCookie, COOKIE_AUTH, readSealedCookie, setSealedCookie } from "./cookies.js";
+
+export class GitHubApiError extends ApiError {
+    readonly internalCode: string;
+
+    constructor(internalCode: string, status = 502) {
+        super(status, "GitHub integration error");
+        this.name = "GitHubApiError";
+        this.internalCode = internalCode;
+    }
+}
 
 const textDecoder = new TextDecoder();
 const GITHUB_PAGE_SIZE = 100;
@@ -121,7 +128,12 @@ async function getInstallationIdForRepo(runtime: RuntimeServices, owner: string,
         });
 
         return (data as { id: number }).id;
-    } catch {
+    } catch (error) {
+        const status = statusOf(error);
+        if (status === 401 || status === 403) throw new GitHubApiError("1401"); // GitHub configuration error
+
+        if (status !== 404) throw new GitHubApiError("1402"); // GitHub API error
+
         throw new ApiError(
             409,
             "GitHub App is not installed on this repository (or access is not granted)",
@@ -288,7 +300,9 @@ export async function hasAuthorizedRepos(runtime: RuntimeServices, octokit: Octo
         page: 1,
     });
 
-    return installations.data.installations.some((installation) => installation.app_slug === runtime.env.GITHUB_APP_SLUG);
+    return installations.data.installations.some(
+        (installation) => installation.app_slug === runtime.env.GITHUB_APP_SLUG,
+    );
 }
 
 export async function listBranchesForRepo(
