@@ -25,16 +25,17 @@
                 position: relative;
                 visibility: visible;
                 transform: none;
+                margin-left: auto;
+                margin-right: auto;
             }
 
             /* PagedJS default styles */
             .pagedjs_pages {
-                width: 100%;
-                display: flex;
-                flex-direction: column;
-                align-items: center;
-                /* Top margin is calculated from zoom scale to be the same visually at any zoom level */
-                margin: calc(3.5rem / var(--preview-zoom-scale, 1)) 0 5px 0;
+                width: max-content;
+                display: block;
+                margin: 3.5rem 0 5px 0;
+                transform: scale(var(--preview-zoom-scale, 1));
+                transform-origin: top left;
             }
             .pagedjs_page {
                 margin: 5px auto;
@@ -52,6 +53,89 @@
             let isRendering = false;
             let queuedRender = null;
             let lastInsertedStyles = [];
+            let pendingZoomRaf = null;
+
+            const parsePixels = (value) => {
+                const parsed = Number.parseFloat(value);
+                return Number.isFinite(parsed) ? parsed : 0;
+            };
+
+            const getCurrentZoomScale = () => {
+                const raw = window.getComputedStyle(document.documentElement).getPropertyValue("--preview-zoom-scale");
+                const parsed = Number.parseFloat(raw);
+                return Number.isFinite(parsed) && parsed > 0 ? parsed : 1;
+            };
+
+            const clamp = (value, min, max) => Math.min(Math.max(value, min), max);
+
+            const clampScrollPosition = (scrollRoot) => {
+                const maxLeft = Math.max(0, scrollRoot.scrollWidth - window.innerWidth);
+                const maxTop = Math.max(0, scrollRoot.scrollHeight - window.innerHeight);
+                scrollRoot.scrollLeft = clamp(scrollRoot.scrollLeft, 0, maxLeft);
+                scrollRoot.scrollTop = clamp(scrollRoot.scrollTop, 0, maxTop);
+            };
+
+            const syncContainerSize = (container, scale) => {
+                const pages = container.querySelector(".pagedjs_pages");
+                if (!pages) return;
+
+                const pageStyles = window.getComputedStyle(pages);
+                const marginTop = parsePixels(pageStyles.marginTop);
+                const marginBottom = parsePixels(pageStyles.marginBottom);
+                const baseWidth = pages.scrollWidth;
+                const baseHeight = pages.scrollHeight;
+
+                if (!baseWidth || !baseHeight) return;
+
+                container.style.width = `${Math.ceil(baseWidth * scale)}px`;
+                container.style.height = `${Math.ceil(baseHeight * scale + marginTop + marginBottom)}px`;
+            };
+
+            window.setPreviewZoom = (scale, anchorX, anchorY) => {
+                const normalizedScale = Number.isFinite(scale) && scale > 0 ? scale : 1;
+                const previousScale = getCurrentZoomScale();
+                const targetAnchorX = Number.isFinite(anchorX) ? anchorX : window.innerWidth / 2;
+                const targetAnchorY = Number.isFinite(anchorY) ? anchorY : window.innerHeight / 2;
+
+                const visibleContainer = document.querySelector(".preview-visible");
+                const pages = visibleContainer?.querySelector(".pagedjs_pages");
+                const hasAnchoredPoint = pages instanceof HTMLElement && previousScale > 0;
+                let pointX = 0;
+                let pointY = 0;
+
+                if (hasAnchoredPoint) {
+                    const beforeRect = pages.getBoundingClientRect();
+                    pointX = (targetAnchorX - beforeRect.left) / previousScale;
+                    pointY = (targetAnchorY - beforeRect.top) / previousScale;
+                }
+
+                document.documentElement.style.setProperty("--preview-zoom-scale", `${normalizedScale}`);
+
+                if (visibleContainer instanceof HTMLElement) {
+                    syncContainerSize(visibleContainer, normalizedScale);
+                }
+
+                if (!hasAnchoredPoint) return;
+
+                if (pendingZoomRaf !== null) {
+                    cancelAnimationFrame(pendingZoomRaf);
+                }
+
+                pendingZoomRaf = requestAnimationFrame(() => {
+                    pendingZoomRaf = null;
+
+                    const afterRect = pages.getBoundingClientRect();
+                    const moveX = afterRect.left + pointX * normalizedScale - targetAnchorX;
+                    const moveY = afterRect.top + pointY * normalizedScale - targetAnchorY;
+
+                    const scrollRoot = document.scrollingElement || document.documentElement;
+                    if (!scrollRoot) return;
+
+                    scrollRoot.scrollLeft += moveX;
+                    scrollRoot.scrollTop += moveY;
+                    clampScrollPosition(scrollRoot);
+                });
+            };
 
             // The main render function called from the parent
             window.renderPreview = async (html, css) => {
@@ -103,6 +187,7 @@
 
                             container.classList.remove("preview-hidden");
                             container.classList.add("preview-visible");
+                            window.setPreviewZoom(getCurrentZoomScale());
 
                             // Make links open in a new tab and ensure they are absolute
                             // TODO: Test this further, make sure it covers all scenarios

@@ -57,7 +57,7 @@ function _Preview(props: PreviewProps) {
         >
             {props.children?.(parsedMarkdown, html)}
 
-            <div style={{ zoom: `${zoom()}%`, height: "100%" }}>
+            <div style={{ height: "100%" }}>
                 <PagedPdf html={html()} css={props.css()} zoom={zoom()} />
             </div>
 

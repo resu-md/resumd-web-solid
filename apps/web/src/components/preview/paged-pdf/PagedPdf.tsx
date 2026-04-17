@@ -3,16 +3,50 @@ import { useZoom, useZoomShortcuts } from "../zoom/ZoomContext";
 import previewTemplate from "./pdf-preview.html?raw";
 
 const PAGED_JS_URL = `${import.meta.env.BASE_URL}vendor/pagedjs/paged.js`;
+const TRACKPAD_PINCH_SPEED_MULTIPLIER = 5;
 
 // TODO: Bug: setting padding on body puts padding on the outer container not the page
 
 export default function PagedPdfPreview(props: { html: string; css: string; zoom: number }) {
-    const { handleKeyboardEvent, handleWheelEvent } = useZoomShortcuts();
-    const { zoom, setZoom } = useZoom();
+    const { handleKeyboardEvent } = useZoomShortcuts();
+    const { zoom, setZoom, zoomWithWheelDelta } = useZoom();
 
     let iframeRef: HTMLIFrameElement | undefined;
     let detachInputHandlers: (() => void) | undefined;
     let initialZoomApplied = false;
+    let pendingZoomAnchor: { x: number; y: number } | undefined;
+
+    const normalizeWheelDelta = (event: WheelEvent): number => {
+        if (event.deltaMode === WheelEvent.DOM_DELTA_LINE) return event.deltaY * 16;
+        if (event.deltaMode === WheelEvent.DOM_DELTA_PAGE) return event.deltaY * window.innerHeight;
+        return event.deltaY;
+    };
+
+    const getZoomDelta = (event: WheelEvent): number => {
+        const normalizedDelta = normalizeWheelDelta(event);
+        // On macOS/Safari/Chrome, pinch gestures are typically wheel events with ctrlKey + pixel delta.
+        const isTrackpadPinch = event.ctrlKey && event.deltaMode === WheelEvent.DOM_DELTA_PIXEL && !event.metaKey;
+        return isTrackpadPinch ? normalizedDelta * TRACKPAD_PINCH_SPEED_MULTIPLIER : normalizedDelta;
+    };
+
+    const applyZoomScale = (zoomValue: number, anchor?: { x: number; y: number }) => {
+        const iframe = iframeRef;
+        const doc = iframe?.contentDocument;
+        if (!doc) return;
+
+        const scale = zoomValue / 100;
+
+        const contentWindow = iframe?.contentWindow as
+            | (Window & { setPreviewZoom?: (scale: number, anchorX?: number, anchorY?: number) => void })
+            | null;
+        if (contentWindow?.setPreviewZoom) {
+            contentWindow.setPreviewZoom(scale, anchor?.x, anchor?.y);
+            return;
+        }
+
+        // Fallback path while iframe helper script is still booting.
+        doc.documentElement.style.setProperty("--preview-zoom-scale", `${scale}`);
+    };
 
     /**
      * Adjust the initial value of zoom to make the page fit the iframe viewport. Called uppon iframe's initialization.
@@ -68,7 +102,11 @@ export default function PagedPdfPreview(props: { html: string; css: string; zoom
         if (!contentWindow) return;
 
         const handleWheel = (event: WheelEvent) => {
-            handleWheelEvent(event);
+            if (!event.ctrlKey && !event.metaKey) return;
+
+            event.preventDefault();
+            pendingZoomAnchor = { x: event.clientX, y: event.clientY };
+            zoomWithWheelDelta(getZoomDelta(event));
         };
 
         const handleKeyDown = (event: KeyboardEvent) => {
@@ -87,11 +125,7 @@ export default function PagedPdfPreview(props: { html: string; css: string; zoom
     const handleIframeLoad = () => {
         detachInputHandlers?.();
         attachInputHandlers();
-
-        const doc = iframeRef?.contentDocument;
-        if (doc) {
-            doc.documentElement.style.setProperty("--preview-zoom-scale", `${props.zoom / 100}`);
-        }
+        applyZoomScale(props.zoom);
     };
 
     onMount(() => {
@@ -130,7 +164,10 @@ export default function PagedPdfPreview(props: { html: string; css: string; zoom
     createEffect(() => {
         const iframe = iframeRef;
         if (!iframe?.contentDocument) return;
-        iframe.contentDocument.documentElement.style.setProperty("--preview-zoom-scale", `${props.zoom / 100}`);
+
+        const anchor = pendingZoomAnchor;
+        pendingZoomAnchor = undefined;
+        applyZoomScale(props.zoom, anchor);
     });
 
     return (
