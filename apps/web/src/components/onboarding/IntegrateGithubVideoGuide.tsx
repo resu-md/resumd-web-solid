@@ -1,5 +1,5 @@
 import styles from "./IntegrateGithubModal.module.css";
-import { createEffect, onCleanup, onMount } from "solid-js";
+import { createEffect, createSignal, onCleanup, onMount } from "solid-js";
 import clsx from "clsx";
 import cloneRepositoryVideo from "./assets/clone-repository-video.mov";
 
@@ -7,17 +7,31 @@ type StepConfig = {
     start: number;
     end?: number;
     paused?: boolean;
+    playDelayMs?: number;
     zoomClass?: string;
+    zoomSections?: {
+        start: number;
+        end?: number;
+        zoomClass: string;
+    }[];
 };
 
 const STEP_CONFIG: StepConfig[] = [
-    { start: 0, end: 0, paused: true, zoomClass: styles.zoomRest }, // step 0 (paused)
-    { start: 0, end: 2.41, zoomClass: styles.zoomTopRight }, // step 1
-    { start: 2.41, end: 6.52, zoomClass: styles.zoomRest }, // step 2
-    { start: 6.52, end: 11.06, zoomClass: styles.zoomBottomRight }, // step 3
-    { start: 11.06, end: Infinity, zoomClass: styles.zoomAdjustLarge }, // step 4
-    { start: Infinity, end: Infinity, zoomClass: styles.zoomAdjustLarger }, // step 5
-    { start: Infinity, end: Infinity, zoomClass: styles.zoomAdjustLarger }, // step 6
+    { start: 0, end: 0, paused: true, zoomClass: styles.zoomRest },
+    {
+        start: 0,
+        end: 11.06,
+        playDelayMs: 1000,
+        zoomClass: styles.zoomRest,
+        zoomSections: [
+            { start: 0, end: 0.45, zoomClass: styles.zoomRest },
+            { start: 0.45, end: 2.41, zoomClass: styles.zoomTopRight },
+            { start: 2.41, end: 6.52, zoomClass: styles.zoomRest },
+            { start: 6.52, end: 11.06, zoomClass: styles.zoomBottomRight },
+        ],
+    }, // step 1 (merged 1-3)
+    { start: 11.06, end: Infinity, zoomClass: styles.zoomAdjustLarge },
+    { start: Infinity, end: Infinity, zoomClass: styles.zoomAdjustLarger },
 ];
 
 const NORMAL_RATE = 1;
@@ -26,13 +40,39 @@ const TIME_EPSILON = 0.04;
 export default function IntegrateGithubVideoGuide(props: { step: number }) {
     let videoRef: HTMLVideoElement | undefined;
     let reachedEnd = false;
+    let canPlayCurrentStep = true;
+    let playbackDelayTimeout: ReturnType<typeof setTimeout> | undefined;
+    const [currentTime, setCurrentTime] = createSignal(0);
 
     const getStepConfig = () =>
         STEP_CONFIG[Math.min(Math.max(props.step, 0), STEP_CONFIG.length - 1)] ?? STEP_CONFIG[0];
     const getStepStart = () => getStepConfig().start ?? 0;
     const getStepEnd = () => getStepConfig().end ?? Infinity;
     const isPausedStep = () => !!getStepConfig().paused;
-    const getZoomClass = () => getStepConfig().zoomClass ?? styles.zoomRest;
+    const getStepPlayDelayMs = () => getStepConfig().playDelayMs ?? 0;
+    const getZoomClass = () => {
+        const step = getStepConfig();
+        if (step.zoomSections?.length) {
+            const time = currentTime();
+            const match = step.zoomSections.find((section) => {
+                const sectionEnd = section.end ?? Infinity;
+                return time + TIME_EPSILON >= section.start && time <= sectionEnd + TIME_EPSILON;
+            });
+            if (match) return match.zoomClass;
+        }
+        return step.zoomClass ?? styles.zoomRest;
+    };
+
+    const updateCurrentTime = () => {
+        if (!videoRef) return;
+        setCurrentTime(videoRef.currentTime);
+    };
+
+    const clearPlaybackDelayTimeout = () => {
+        if (playbackDelayTimeout === undefined) return;
+        clearTimeout(playbackDelayTimeout);
+        playbackDelayTimeout = undefined;
+    };
 
     const syncPlayback = () => {
         const video = videoRef;
@@ -48,16 +88,25 @@ export default function IntegrateGithubVideoGuide(props: { step: number }) {
             }
             reachedEnd = true;
             video.pause();
+            updateCurrentTime();
             return;
         }
 
         if (isPausedStep()) {
             video.pause();
+            updateCurrentTime();
             return;
         }
 
         if (!Number.isFinite(end) && reachedEnd) {
             video.pause();
+            updateCurrentTime();
+            return;
+        }
+
+        if (!canPlayCurrentStep) {
+            video.pause();
+            updateCurrentTime();
             return;
         }
 
@@ -70,6 +119,7 @@ export default function IntegrateGithubVideoGuide(props: { step: number }) {
         if (Number.isFinite(end) && time + TIME_EPSILON >= end) {
             video.currentTime = end;
             video.pause();
+            updateCurrentTime();
             return;
         }
 
@@ -77,10 +127,12 @@ export default function IntegrateGithubVideoGuide(props: { step: number }) {
             reachedEnd = true;
             video.currentTime = video.duration;
             video.pause();
+            updateCurrentTime();
             return;
         }
 
         if (video.paused) void video.play().catch(() => undefined);
+        updateCurrentTime();
     };
 
     onMount(() => {
@@ -92,6 +144,7 @@ export default function IntegrateGithubVideoGuide(props: { step: number }) {
         const handleEnded = () => {
             reachedEnd = true;
             video.pause();
+            updateCurrentTime();
         };
 
         video.addEventListener("timeupdate", handleTimeUpdate);
@@ -101,6 +154,7 @@ export default function IntegrateGithubVideoGuide(props: { step: number }) {
         syncPlayback();
 
         onCleanup(() => {
+            clearPlaybackDelayTimeout();
             video.removeEventListener("timeupdate", handleTimeUpdate);
             video.removeEventListener("loadedmetadata", handleLoadedMetadata);
             video.removeEventListener("ended", handleEnded);
@@ -111,6 +165,18 @@ export default function IntegrateGithubVideoGuide(props: { step: number }) {
         props.step;
         if (!videoRef) return;
         const start = getStepStart();
+        const playDelayMs = getStepPlayDelayMs();
+
+        clearPlaybackDelayTimeout();
+        canPlayCurrentStep = playDelayMs <= 0;
+
+        if (playDelayMs > 0) {
+            playbackDelayTimeout = setTimeout(() => {
+                canPlayCurrentStep = true;
+                syncPlayback();
+            }, playDelayMs);
+        }
+
         reachedEnd = false;
         videoRef.playbackRate = NORMAL_RATE;
         if (!Number.isFinite(start)) {
@@ -119,10 +185,12 @@ export default function IntegrateGithubVideoGuide(props: { step: number }) {
             }
             reachedEnd = true;
             videoRef.pause();
+            updateCurrentTime();
             return;
         }
         videoRef.currentTime = start;
-        if (isPausedStep()) {
+        updateCurrentTime();
+        if (isPausedStep() || !canPlayCurrentStep) {
             videoRef.pause();
             return;
         }

@@ -1,5 +1,17 @@
 import clsx from "clsx";
-import { createEffect, createSignal, onCleanup, onMount, type JSX, Match, Show, Switch } from "solid-js";
+import {
+    createEffect,
+    createMemo,
+    createSignal,
+    type Accessor,
+    type Component,
+    For,
+    onCleanup,
+    onMount,
+    type JSX,
+    Show,
+} from "solid-js";
+import { Dynamic } from "solid-js/web";
 import styles from "./IntegrateGithubModal.module.css";
 
 import RoughAnnotation from "@/components/onboarding/RoughAnnotation";
@@ -7,30 +19,206 @@ import { Dialog } from "@kobalte/core/dialog";
 import { IoArrowUpRightBoxOutline } from "solid-icons/io";
 import IntegrateGithubVideoGuide from "./IntegrateGithubVideoGuide";
 import { StepProvider, useStep } from "./useStep";
+import { createPresence } from "@solid-primitives/presence";
+import { CgClose } from "solid-icons/cg";
 
 const TEMPLATE_URL = "https://github.com/resumemarkdown/template-jakes-resume";
-const MAX_STEP = 7;
+const MAX_STEP = 4;
+const URL_REWRITE_ANNOTATION_STEP = 2;
+const URL_REWRITE_RETURN_FALLBACK_MS = 600;
+const MIDDLE_STEP_MIN = 1;
+const MIDDLE_STEP_MAX = MAX_STEP - 1;
+const MIDDLE_INDICATOR_STEPS = [1, 2, 3] as const;
+const STEP_TRANSITION_DURATION_MS = 300;
+const FADE_TRANSITION_CLASS = "transition-opacity duration-300 ease-out";
+
+type OnboardingSection = "intro" | "guide" | "done";
+
+const isMiddleStep = (value: number) => value >= MIDDLE_STEP_MIN && value <= MIDDLE_STEP_MAX;
+const getStepSection = (value: number): OnboardingSection =>
+    value === 0 ? "intro" : value === MAX_STEP ? "done" : "guide";
+
+function createOnboardingTransition(step: Accessor<number>) {
+    const section = () => getStepSection(step());
+    const presence = createPresence<OnboardingSection>(section, {
+        transitionDuration: STEP_TRANSITION_DURATION_MS,
+    });
+    const visibleSection = () => presence.mountedItem() ?? section();
+    const visibleGuideStep = createMemo<number>((previousGuideStep) => {
+        const currentStep = step();
+        return isMiddleStep(currentStep) ? currentStep : previousGuideStep;
+    }, MIDDLE_STEP_MIN);
+    const visibleStep = (): number => {
+        const currentSection = visibleSection();
+        if (currentSection === "intro") return 0;
+        if (currentSection === "done") return MAX_STEP;
+        return visibleGuideStep();
+    };
+    const fadeClass = () => clsx(FADE_TRANSITION_CLASS, presence.isVisible() ? "opacity-100" : "opacity-0");
+
+    return {
+        presence,
+        visibleSection,
+        visibleStep,
+        visibleGuideStep,
+        fadeClass,
+    };
+}
+
+function createUrlRewriteAnnotationState(step: Accessor<number>) {
+    const [urlRewriteAnnotationsActive, setUrlRewriteAnnotationsActive] = createSignal(false);
+    let shouldWaitForRepositoryReturn = false;
+    let hasPageLostAttentionAfterClone = false;
+    let returnFallbackTimeout: ReturnType<typeof setTimeout> | undefined;
+
+    const isPageVisible = () => (typeof document === "undefined" ? true : document.visibilityState === "visible");
+    const hasPageFocus = () => (typeof document === "undefined" ? true : document.hasFocus());
+    const isPageActive = () => isPageVisible() && hasPageFocus();
+
+    const clearReturnFallbackTimeout = () => {
+        if (returnFallbackTimeout === undefined) return;
+        clearTimeout(returnFallbackTimeout);
+        returnFallbackTimeout = undefined;
+    };
+
+    const activateUrlRewriteAnnotations = () => {
+        clearReturnFallbackTimeout();
+        shouldWaitForRepositoryReturn = false;
+        setUrlRewriteAnnotationsActive(true);
+    };
+
+    const markPageLostAttention = () => {
+        if (!shouldWaitForRepositoryReturn || urlRewriteAnnotationsActive()) return;
+        hasPageLostAttentionAfterClone = true;
+        clearReturnFallbackTimeout();
+    };
+
+    const scheduleActivePageFallback = () => {
+        clearReturnFallbackTimeout();
+        returnFallbackTimeout = setTimeout(() => {
+            returnFallbackTimeout = undefined;
+            if (step() === URL_REWRITE_ANNOTATION_STEP && shouldWaitForRepositoryReturn && isPageActive()) {
+                activateUrlRewriteAnnotations();
+            }
+        }, URL_REWRITE_RETURN_FALLBACK_MS);
+    };
+
+    const activateAfterRepositoryReturn = () => {
+        if (urlRewriteAnnotationsActive() || step() !== URL_REWRITE_ANNOTATION_STEP || !shouldWaitForRepositoryReturn) {
+            return;
+        }
+
+        if (!isPageActive()) {
+            markPageLostAttention();
+            return;
+        }
+
+        if (hasPageLostAttentionAfterClone) {
+            activateUrlRewriteAnnotations();
+            return;
+        }
+
+        scheduleActivePageFallback();
+    };
+
+    const waitForRepositoryReturn = () => {
+        if (urlRewriteAnnotationsActive()) return;
+        shouldWaitForRepositoryReturn = true;
+        hasPageLostAttentionAfterClone = false;
+        clearReturnFallbackTimeout();
+    };
+
+    onMount(() => {
+        const handleVisibilityChange = () => {
+            if (isPageVisible()) {
+                activateAfterRepositoryReturn();
+                return;
+            }
+            markPageLostAttention();
+        };
+
+        document.addEventListener("visibilitychange", handleVisibilityChange);
+        window.addEventListener("focus", activateAfterRepositoryReturn);
+        window.addEventListener("pageshow", activateAfterRepositoryReturn);
+        window.addEventListener("blur", markPageLostAttention);
+
+        onCleanup(() => {
+            document.removeEventListener("visibilitychange", handleVisibilityChange);
+            window.removeEventListener("focus", activateAfterRepositoryReturn);
+            window.removeEventListener("pageshow", activateAfterRepositoryReturn);
+            window.removeEventListener("blur", markPageLostAttention);
+            clearReturnFallbackTimeout();
+        });
+    });
+
+    createEffect(() => {
+        if (urlRewriteAnnotationsActive()) return;
+
+        if (step() !== URL_REWRITE_ANNOTATION_STEP) {
+            clearReturnFallbackTimeout();
+            if (shouldWaitForRepositoryReturn && !hasPageLostAttentionAfterClone && isPageActive()) {
+                shouldWaitForRepositoryReturn = false;
+            }
+            return;
+        }
+
+        if (shouldWaitForRepositoryReturn) {
+            activateAfterRepositoryReturn();
+            return;
+        }
+
+        activateUrlRewriteAnnotations();
+    });
+
+    return {
+        urlRewriteAnnotationsActive,
+        waitForRepositoryReturn,
+    };
+}
+
+type StepContentProps = {
+    urlRewriteAnnotationsActive: boolean;
+};
+
+const STEP_CONTENT: Record<number, Component<StepContentProps>> = {
+    0: IntroStepContent,
+    1: CloneTemplateStepContent,
+    2: RepositoryUrlStepContent,
+    3: AuthorizeRepositoryStepContent,
+    [MAX_STEP]: DoneStepContent,
+};
+
+type BottomActionsProps = {
+    step: number;
+    visibleGuideStep: number;
+    setStep: (step: number) => void;
+    incrementStep: () => void;
+    decrementStep: () => void;
+    openTemplateRepository: () => void | Promise<void>;
+};
+
+const SECTION_ACTIONS: Record<OnboardingSection, Component<BottomActionsProps>> = {
+    intro: IntroActions,
+    guide: GuideActions,
+    done: DoneActions,
+};
 
 export default function IntegrateGithubModal() {
     return (
-        <StepProvider minStep={0} maxStep={MAX_STEP} initialStep={0}>
+        <StepProvider minStep={0} maxStep={MAX_STEP}>
             <IntegrateGithubModalContent />
         </StepProvider>
     );
 }
 
 export function IntegrateGithubModalContent() {
-    const { stepInRange } = useStep();
-
     return (
         <Dialog open={true}>
             <Dialog.Portal>
                 <Dialog.Overlay class="fixed inset-0 z-50 bg-black/40 backdrop-blur-sm" />
                 <div class="fixed inset-0 z-50 flex items-center justify-center">
                     <Dialog.Content class="proeminent-button relative flex aspect-16/13 w-170 flex-col overflow-hidden rounded-3xl shadow-xl outline-none">
-                        <Show when={stepInRange(0, MAX_STEP)}>
-                            <OnboardingStep />
-                        </Show>
+                        <Onboarding />
                     </Dialog.Content>
                 </div>
             </Dialog.Portal>
@@ -38,236 +226,275 @@ export function IntegrateGithubModalContent() {
     );
 }
 
-function OnboardingStep() {
-    const { step, setStep, stepInRange, incrementStep, decrementStep, stepIn } = useStep();
+function Onboarding() {
+    const { step, setStep, incrementStep, decrementStep } = useStep();
+    const transition = createOnboardingTransition(step);
+    const videoPresence = createPresence(() => (transition.visibleSection() === "intro" ? undefined : true), {
+        transitionDuration: STEP_TRANSITION_DURATION_MS,
+    });
+    const { urlRewriteAnnotationsActive, waitForRepositoryReturn } = createUrlRewriteAnnotationState(step);
 
-    const [showAnnotation, setShowAnnotation] = createSignal(false);
-
-    const openTemplateRepository = () => {
+    const openTemplateRepository = async () => {
+        waitForRepositoryReturn();
         window.open(TEMPLATE_URL, "_blank");
+        await new Promise((resolve) => setTimeout(resolve, 100));
         incrementStep();
     };
 
-    /**
-     * Logic to control showAnnotation and make it so the `RoughAnnotation`s are only triggered when the user comes
-     * back from the external tab
-     */
-
-    let hasBeenHiddenOnStepFive = false;
-
-    const isPageVisible = () => (typeof document === "undefined" ? true : document.visibilityState === "visible");
-
-    onMount(() => {
-        const handlePageVisibilityChange = () => {
-            if (step() !== 5) return;
-            if (!isPageVisible()) {
-                hasBeenHiddenOnStepFive = true;
-                return;
-            }
-            if (hasBeenHiddenOnStepFive && !showAnnotation()) setShowAnnotation(true);
-        };
-
-        document.addEventListener("visibilitychange", handlePageVisibilityChange);
-
-        onCleanup(() => {
-            document.removeEventListener("visibilitychange", handlePageVisibilityChange);
-        });
-    });
-
-    createEffect(() => {
-        if (step() !== 5) {
-            setShowAnnotation(false);
-            hasBeenHiddenOnStepFive = false;
-            return;
-        }
-        setShowAnnotation(false);
-        hasBeenHiddenOnStepFive = !isPageVisible();
-    });
-
     return (
         <>
-            <div class={clsx("absolute z-0 size-full px-14 pt-12", styles.modalDiagramContainer)}>
-                <IntegrateGithubVideoGuide step={step()} />
-            </div>
+            <Dialog.CloseButton
+                class={clsx(
+                    "bg-system-tertiary/75 hit-area-0.5 absolute top-3.25 right-3.25 z-20 w-fit cursor-pointer rounded-full p-0.75",
+                    "motion-opacity-in motion-delay-2000 motion-duration-1600 motion-ease-linear",
+                )}
+                tabindex={-1}
+            >
+                <CgClose class="text-label-tertiary size-4" />
+            </Dialog.CloseButton>
+
+            <Show when={videoPresence.isMounted()}>
+                <div
+                    class={clsx(
+                        "absolute z-0 size-full px-14 pt-12",
+                        FADE_TRANSITION_CLASS,
+                        styles.modalDiagramContainer,
+                        videoPresence.isVisible() ? "opacity-100" : "opacity-0",
+                        // step() === 0 && "translate-y-5 opacity-20 blur-[1px]",
+                    )}
+                >
+                    <IntegrateGithubVideoGuide step={step()} />
+                </div>
+            </Show>
 
             <div
                 class={clsx(
                     "proeminent-button absolute right-0 bottom-0 left-0 z-5 h-[28%]",
+                    FADE_TRANSITION_CLASS,
                     styles.backgroundMask,
-                    stepIn(1) ? "opacity-100" : "opacity-0",
+                    step() === MIDDLE_STEP_MIN && transition.presence.isVisible() ? "opacity-100" : "opacity-0",
                 )}
             />
 
             <div class="z-10 flex w-full flex-1 flex-col items-center justify-end px-5 pt-5">
-                <div class="w-full px-3 text-xl">
-                    <Switch>
-                        <Match when={step() === 0}>
-                            <h2 class="text-center">
-                                <span class="motion-opacity-in-[0%] motion-blur-in-[2px] motion-delay-100 motion-duration-500">
-                                    First,
-                                </span>
-                                <span class="motion-opacity-in-[0%] motion-blur-in-[2px] motion-delay-1000 motion-duration-1000">
-                                    {" "}
-                                    you will need to create a repository{" "}
-                                </span>
-                                <span class="motion-opacity-in-[0%] motion-blur-in-[2px] motion-delay-2200 motion-duration-1000">
-                                    for your resume
-                                </span>
-                            </h2>
-                        </Match>
-                        <Match when={step() === 1}>
-                            {/* <h2>That is, clone a template...</h2> */}
-                            <h2 class="text-center">We recommend you to clone a template...</h2>
-                        </Match>
-                        <Match when={step() === 2}>
-                            <h2 class="text-center">Give it a name...</h2>
-                        </Match>
-                        <Match when={step() === 3}>
-                            <h2 class="text-center">And make it private.</h2>
-                            <p class="text-label-secondary mt-1 text-center text-sm font-light italic">
-                                This one is optional, but recommended.
-                            </p>
-                        </Match>
-                        <Match when={step() === 4}>
-                            <h2 class="text-center">So, go ahead and do that</h2>
-                        </Match>
-                        <Match when={step() === 5}>
-                            <h2 class="text-center text-balance">
-                                Now, go to your repository, and replace{" "}
-                                <span class="text-nowrap">
-                                    <RoughAnnotation
-                                        type="strike-through"
-                                        color="#636366"
-                                        class="font-light"
-                                        active={showAnnotation()}
-                                        delay={1000}
-                                        duration={400}
-                                        strokeWidth={2}
-                                        padding={2}
-                                        iterations={2}
-                                    >
-                                        github
-                                    </RoughAnnotation>
-                                    .com
-                                </span>{" "}
-                                with{" "}
-                                <span class="text-nowrap">
-                                    <RoughAnnotation
-                                        type="circle"
-                                        color="#ffd600"
-                                        class="font-light"
-                                        active={showAnnotation()}
-                                        delay={2300}
-                                        duration={400}
-                                        strokeWidth={2}
-                                        padding={[6, 6]}
-                                        iterations={1}
-                                    >
-                                        resumemarkdown
-                                    </RoughAnnotation>
-                                    .com
-                                </span>{" "}
-                                in the URL
-                            </h2>
-                        </Match>
-                        <Match when={step() === 6}>
-                            <h2>And, finally, authorize access to that repository</h2>
-                            <p class="text-label-secondary mt-1 text-sm font-light">
-                                We recommend choosing{" "}
-                                <RoughAnnotation
-                                    type="underline"
-                                    color="rgba(255, 204, 0, 0.5)"
-                                    class="mr-0.25"
-                                    delay={500}
-                                    duration={800}
-                                    strokeWidth={2}
-                                    iterations={1}
-                                    padding={-0.6}
-                                >
-                                    <i>Only selected repositories</i>
-                                </RoughAnnotation>{" "}
-                                and only conceding access to the repository you just created.
-                            </p>
-                        </Match>
-                        <Match when={step() === MAX_STEP}>
-                            <h2>
-                                You are{" "}
-                                <RoughAnnotation
-                                    type="underline"
-                                    color="#0091ff"
-                                    delay={200}
-                                    duration={400}
-                                    padding={-0.5}
-                                    strokeWidth={2}
-                                    iterations={2}
-                                >
-                                    set
-                                </RoughAnnotation>
-                                !
-                            </h2>
-                            <p class="text-label-secondary mt-1 text-sm font-light">
-                                Make changes to the template resume and commit them. On every commit, a GitHub action
-                                will generate a PDF from your resume files.
-                            </p>
-                        </Match>
-                    </Switch>
+                <div
+                    class={clsx(
+                        transition.visibleStep() === 0
+                            ? "flex w-full flex-1 items-center justify-center px-3 pt-11 text-xl"
+                            : "w-full px-3 text-xl",
+                        transition.fadeClass(),
+                    )}
+                >
+                    <Dynamic
+                        component={STEP_CONTENT[transition.visibleStep()] ?? DoneStepContent}
+                        urlRewriteAnnotationsActive={urlRewriteAnnotationsActive()}
+                    />
                 </div>
 
-                <div class="mt-3 mb-5 flex w-full items-center gap-3">
-                    <Show when={step() === 0}>
-                        <div class="flex w-full justify-center">
-                            <Button onClick={incrementStep}>Continue</Button>
-                        </div>
-                    </Show>
-
-                    <Show when={stepInRange(1, MAX_STEP - 1)}>
-                        <div class="flex w-full justify-between">
-                            <button
-                                class="text-label-tertiary hover:text-label-secondary animate-fade-in cursor-pointer rounded-full px-3 text-sm transition-colors duration-100 select-none"
-                                onClick={decrementStep}
-                            >
-                                Prev
-                            </button>
-
-                            <Switch>
-                                <Match when={stepInRange(1, 3)}>
-                                    <Button onClick={incrementStep}>
-                                        Next{" "}
-                                        <span class="text-gray-5 ml-2 text-sm font-light tabular-nums">{step()}/3</span>
-                                    </Button>
-                                </Match>
-                                <Match when={step() === 4}>
-                                    <Button onClick={openTemplateRepository}>
-                                        Clone the template <IoArrowUpRightBoxOutline class="ml-0.75 inline size-3" />
-                                    </Button>
-                                </Match>
-                                <Match when={stepInRange(5, MAX_STEP - 1)}>
-                                    <Button onClick={incrementStep}>
-                                        <i>Done that</i>
-                                    </Button>
-                                </Match>
-                            </Switch>
-                        </div>
-                    </Show>
-
-                    <Show when={step() === MAX_STEP}>
-                        <div class="flex flex-1 justify-end gap-3">
-                            <Show when={step() === MAX_STEP}>
-                                <button
-                                    class="text-label-tertiary hover:text-label-secondary motion-opacity-in motion-delay-1200 motion-duration-300 h-8 cursor-pointer rounded-full px-3 text-sm transition-colors duration-100 select-none"
-                                    onClick={() => setStep(-1)}
-                                >
-                                    Restart guide
-                                </button>
-                            </Show>
-                            <Button onClick={incrementStep}>
-                                Go to app {/* <FiArrowRight class="ml-1 inline size-4" /> */}
-                            </Button>
-                        </div>
-                    </Show>
+                <div class={clsx("mt-3 mb-5 flex w-full items-center gap-3", transition.fadeClass())}>
+                    <Dynamic
+                        component={SECTION_ACTIONS[transition.visibleSection()]}
+                        step={step()}
+                        visibleGuideStep={transition.visibleGuideStep()}
+                        setStep={setStep}
+                        incrementStep={incrementStep}
+                        decrementStep={decrementStep}
+                        openTemplateRepository={openTemplateRepository}
+                    />
                 </div>
             </div>
         </>
+    );
+}
+
+function IntroStepContent() {
+    return (
+        <h2 class="text-center">
+            <span class="motion-opacity-in-[0%] motion-blur-in-[2px] motion-delay-100 motion-duration-700">First,</span>
+            <span class="motion-opacity-in-[0%] motion-blur-in-[2px] motion-delay-900 motion-duration-800">
+                {" "}
+                you will need to create a repository{" "}
+            </span>
+            <span class="motion-opacity-in-[0%] motion-blur-in-[2px] motion-delay-1800 motion-duration-800">
+                for your resume
+            </span>
+        </h2>
+    );
+}
+
+function CloneTemplateStepContent() {
+    return (
+        <>
+            <h2 class="text-center text-balance duration-300 *:transition-opacity">
+                Clone the template repository template to your GitHub account
+            </h2>
+            <p class="text-label-secondary mt-1 text-center text-sm font-light">
+                We recommend keeping its visibility private, but that is optional.
+            </p>
+        </>
+    );
+}
+
+function RepositoryUrlStepContent(props: StepContentProps) {
+    return (
+        <h2 class="text-center text-balance">
+            Now, go to your repository, and replace{" "}
+            <span class="text-nowrap">
+                <RoughAnnotation
+                    type="strike-through"
+                    color="#636366"
+                    class="font-light"
+                    active={props.urlRewriteAnnotationsActive}
+                    delay={1000}
+                    duration={400}
+                    strokeWidth={2}
+                    padding={2}
+                    iterations={2}
+                >
+                    github
+                </RoughAnnotation>
+                .com
+            </span>{" "}
+            with{" "}
+            <span class="text-nowrap">
+                <RoughAnnotation
+                    type="circle"
+                    color="#ffd600"
+                    class="font-light"
+                    active={props.urlRewriteAnnotationsActive}
+                    delay={2300}
+                    duration={400}
+                    strokeWidth={2}
+                    padding={[6, 6]}
+                    iterations={1}
+                >
+                    resumemarkdown
+                </RoughAnnotation>
+                .com
+            </span>{" "}
+            in the URL
+        </h2>
+    );
+}
+
+function AuthorizeRepositoryStepContent() {
+    return (
+        <>
+            <h2>And, finally, authorize access to that repository</h2>
+            <p class="text-label-secondary mt-1 text-sm font-light">
+                We recommend choosing{" "}
+                <RoughAnnotation
+                    type="underline"
+                    color="rgba(255, 204, 0, 0.5)"
+                    class="mr-px"
+                    delay={500}
+                    duration={800}
+                    strokeWidth={2}
+                    iterations={1}
+                    padding={-0.6}
+                >
+                    <i>Only selected repositories</i>
+                </RoughAnnotation>{" "}
+                and only conceding access to the repository you just created.
+            </p>
+        </>
+    );
+}
+
+function DoneStepContent() {
+    return (
+        <>
+            <h2>
+                <RoughAnnotation
+                    type="highlight"
+                    color="#00c1e887"
+                    delay={700}
+                    duration={800}
+                    strokeWidth={2}
+                    iterations={1}
+                >
+                    You are set!
+                </RoughAnnotation>
+            </h2>
+            <p class="text-label-secondary mt-1 text-sm font-light">
+                Make changes to the template resume and commit them. On every commit, a GitHub action will generate a
+                PDF from your resume files.
+            </p>
+        </>
+    );
+}
+
+function IntroActions(props: BottomActionsProps) {
+    return (
+        <div class="motion-opacity-in motion-delay-2000 motion-duration-1600 motion-ease-linear flex w-full justify-center">
+            <Button onClick={props.incrementStep}>Continue</Button>
+        </div>
+    );
+}
+
+function GuideActions(props: BottomActionsProps) {
+    return (
+        <div class="flex w-full">
+            <div class="flex-[1_1_0%]">
+                <Show when={props.step !== MIDDLE_STEP_MIN}>
+                    <button
+                        class="text-label-tertiary hover:text-label-secondary animate-fade-in cursor-pointer rounded-full px-3 text-sm transition-colors duration-100 select-none"
+                        onClick={props.decrementStep}
+                    >
+                        Prev
+                    </button>
+                </Show>
+            </div>
+
+            <div class="flex items-center justify-center gap-1.5">
+                <For each={MIDDLE_INDICATOR_STEPS}>
+                    {(indicatorStep) => (
+                        <button
+                            class={clsx(
+                                "hit-area-1 size-1.75 cursor-pointer rounded-full",
+                                props.step === indicatorStep
+                                    ? "bg-fill-primary w-4.5"
+                                    : "bg-fill-tertiary hover:bg-fill-primary transition-colors",
+                            )}
+                            onClick={() => props.setStep(indicatorStep)}
+                        />
+                    )}
+                </For>
+            </div>
+
+            <div class="flex flex-[1_1_0%] justify-end">
+                <Button
+                    onClick={() =>
+                        props.visibleGuideStep === MIDDLE_STEP_MIN
+                            ? props.openTemplateRepository()
+                            : props.incrementStep()
+                    }
+                >
+                    <Show when={props.visibleGuideStep === MIDDLE_STEP_MIN} fallback={<i>Done that</i>}>
+                        <>
+                            Clone the template <IoArrowUpRightBoxOutline class="ml-1.25 inline size-3" />
+                        </>
+                    </Show>
+                </Button>
+            </div>
+        </div>
+    );
+}
+
+function DoneActions(props: BottomActionsProps) {
+    return (
+        <div class="flex w-full">
+            <div class="flex-[1_1_0%]">
+                <button
+                    class="text-label-tertiary hover:text-label-secondary motion-opacity-in motion-delay-1200 motion-duration-300 h-8 cursor-pointer rounded-full px-3 text-sm transition-colors duration-100 select-none"
+                    onClick={() => props.setStep(0)}
+                >
+                    Restart guide
+                </button>
+            </div>
+            <Button onClick={props.incrementStep}>Go to app</Button>
+            <div class="flex-[1_1_0%]"></div>
+        </div>
     );
 }
 
