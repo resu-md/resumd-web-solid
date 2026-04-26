@@ -104,6 +104,7 @@ export default function IntegrateGithubModal(props: { open: boolean; onOpenChang
                 />
                 <div class="fixed inset-0 z-50 flex items-center justify-center">
                     <Dialog.Content
+                        onPointerDownOutside={(event) => event.preventDefault()}
                         class={clsx(
                             "proeminent-button relative flex aspect-16/13 w-170 flex-col overflow-hidden rounded-3xl shadow-xl outline-none",
                             "motion-duration-300",

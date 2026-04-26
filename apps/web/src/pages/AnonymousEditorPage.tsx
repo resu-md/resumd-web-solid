@@ -1,4 +1,4 @@
-import { Show, createEffect } from "solid-js";
+import { Show, createEffect, createSignal } from "solid-js";
 import { useNavigate } from "@solidjs/router";
 import { exportAsPdf } from "@/lib/export-as-pdf";
 import { exportAsZip } from "@/lib/export-as-zip";
@@ -12,6 +12,7 @@ import EditorShell from "@/components/editor/EditorShell";
 import Preview from "@/components/preview/Preview";
 import ToolbarShell from "@/components/preview/toolbar/ToolbarShell";
 import SaveOptionsButton from "@/components/preview/toolbar/SaveOptionsButton";
+import IntegrateGithubModal from "@/components/onboarding/IntegrateGithubModal";
 
 export default function AnonymousEditorPage() {
     const { user } = useGithubAuth();
@@ -50,6 +51,8 @@ export default function AnonymousEditorPage() {
 function AnonymousEditor() {
     const { markdown, css, setMarkdown, setCss } = useAnonymousResume();
 
+    const [modalOpen, setModalOpen] = createSignal(false);
+
     return (
         <main class="bg-system-secondary flex h-dvh w-dvw">
             <EditorShell tabs={["resume.md", "theme.css"]}>
@@ -82,15 +85,14 @@ function AnonymousEditor() {
                                 <SaveOptionsButton
                                     onDownloadZip={() => exportAsZip(html(), css(), parsedMarkdown().metadata)}
                                     onExportPdf={() => exportAsPdf(html(), css(), parsedMarkdown().metadata)}
-                                    onPushToGithub={() => {
-                                        alert("You must be logged in to use this feature.");
-                                    }}
+                                    onPushToGithub={() => setModalOpen(true)}
                                 />
                             }
                         />
                     )}
                 </Preview>
             </div>
+            <IntegrateGithubModal open={modalOpen()} onOpenChange={setModalOpen} />
         </main>
     );
 }
