@@ -148,17 +148,16 @@ function Onboarding() {
                 <CgClose class="text-label-tertiary size-4" />
             </Dialog.CloseButton>
 
-            <Show when={videoPresence.isMounted()}>
-                <div
-                    class={clsx(
-                        "absolute z-0 size-full px-14 pt-9",
-                        FADE_TRANSITION_CLASS,
-                        videoPresence.isVisible() ? "opacity-100" : "opacity-0",
-                    )}
-                >
-                    <IntegrateGithubVideoGuide step={step()} paused={shouldPauseUrlRewriteVideo()} />
-                </div>
-            </Show>
+            <div
+                class={clsx(
+                    "absolute z-0 size-full px-14 pt-9",
+                    FADE_TRANSITION_CLASS,
+                    videoPresence.isVisible() ? "opacity-100" : "opacity-0",
+                )}
+                aria-hidden={transition.visibleSection() === "intro"}
+            >
+                <IntegrateGithubVideoGuide step={step()} paused={shouldPauseUrlRewriteVideo()} />
+            </div>
 
             <div
                 class={clsx(

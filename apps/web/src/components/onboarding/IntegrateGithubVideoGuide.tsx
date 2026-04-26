@@ -171,6 +171,7 @@ export default function IntegrateGithubVideoGuide(props: { step: number; paused?
         video.addEventListener("loadedmetadata", handleLoadedMetadata);
         video.addEventListener("ended", handleEnded);
 
+        video.load();
         syncPlayback();
 
         onCleanup(() => {
