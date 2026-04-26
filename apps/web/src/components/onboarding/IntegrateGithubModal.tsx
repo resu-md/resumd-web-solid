@@ -1,18 +1,5 @@
 import clsx from "clsx";
-import {
-    createEffect,
-    createMemo,
-    createSignal,
-    type Accessor,
-    type Component,
-    For,
-    onCleanup,
-    onMount,
-    type JSX,
-    Show,
-    Switch,
-    Match,
-} from "solid-js";
+import { createMemo, type Accessor, type Component, For, type JSX, Match, Show, Switch } from "solid-js";
 import { Dynamic } from "solid-js/web";
 import styles from "./IntegrateGithubModal.module.css";
 
@@ -23,6 +10,7 @@ import IntegrateGithubVideoGuide from "./IntegrateGithubVideoGuide";
 import { StepProvider, useStep } from "./useStep";
 import { createPresence } from "@solid-primitives/presence";
 import { CgChevronLeft, CgClose, CgUndo } from "solid-icons/cg";
+import { createReturnAwareActivation } from "./createReturnAwareActivation";
 
 const TEMPLATE_URL = "https://github.com/resumemarkdown/template-jakes-resume";
 const MAX_STEP = 4;
@@ -66,117 +54,6 @@ function createOnboardingTransition(step: Accessor<number>) {
     };
 }
 
-function createUrlRewriteAnnotationState(step: Accessor<number>) {
-    const [urlRewriteAnnotationsActive, setUrlRewriteAnnotationsActive] = createSignal(false);
-    let shouldWaitForRepositoryReturn = false;
-    let hasPageLostAttentionAfterClone = false;
-    let returnFallbackTimeout: ReturnType<typeof setTimeout> | undefined;
-
-    const isPageVisible = () => (typeof document === "undefined" ? true : document.visibilityState === "visible");
-    const hasPageFocus = () => (typeof document === "undefined" ? true : document.hasFocus());
-    const isPageActive = () => isPageVisible() && hasPageFocus();
-
-    const clearReturnFallbackTimeout = () => {
-        if (returnFallbackTimeout === undefined) return;
-        clearTimeout(returnFallbackTimeout);
-        returnFallbackTimeout = undefined;
-    };
-
-    const activateUrlRewriteAnnotations = () => {
-        clearReturnFallbackTimeout();
-        shouldWaitForRepositoryReturn = false;
-        setUrlRewriteAnnotationsActive(true);
-    };
-
-    const markPageLostAttention = () => {
-        if (!shouldWaitForRepositoryReturn || urlRewriteAnnotationsActive()) return;
-        hasPageLostAttentionAfterClone = true;
-        clearReturnFallbackTimeout();
-    };
-
-    const scheduleActivePageFallback = () => {
-        clearReturnFallbackTimeout();
-        returnFallbackTimeout = setTimeout(() => {
-            returnFallbackTimeout = undefined;
-            if (step() === URL_REWRITE_ANNOTATION_STEP && shouldWaitForRepositoryReturn && isPageActive()) {
-                activateUrlRewriteAnnotations();
-            }
-        }, URL_REWRITE_RETURN_FALLBACK_MS);
-    };
-
-    const activateAfterRepositoryReturn = () => {
-        if (urlRewriteAnnotationsActive() || step() !== URL_REWRITE_ANNOTATION_STEP || !shouldWaitForRepositoryReturn) {
-            return;
-        }
-
-        if (!isPageActive()) {
-            markPageLostAttention();
-            return;
-        }
-
-        if (hasPageLostAttentionAfterClone) {
-            activateUrlRewriteAnnotations();
-            return;
-        }
-
-        scheduleActivePageFallback();
-    };
-
-    const waitForRepositoryReturn = () => {
-        if (urlRewriteAnnotationsActive()) return;
-        shouldWaitForRepositoryReturn = true;
-        hasPageLostAttentionAfterClone = false;
-        clearReturnFallbackTimeout();
-    };
-
-    onMount(() => {
-        const handleVisibilityChange = () => {
-            if (isPageVisible()) {
-                activateAfterRepositoryReturn();
-                return;
-            }
-            markPageLostAttention();
-        };
-
-        document.addEventListener("visibilitychange", handleVisibilityChange);
-        window.addEventListener("focus", activateAfterRepositoryReturn);
-        window.addEventListener("pageshow", activateAfterRepositoryReturn);
-        window.addEventListener("blur", markPageLostAttention);
-
-        onCleanup(() => {
-            document.removeEventListener("visibilitychange", handleVisibilityChange);
-            window.removeEventListener("focus", activateAfterRepositoryReturn);
-            window.removeEventListener("pageshow", activateAfterRepositoryReturn);
-            window.removeEventListener("blur", markPageLostAttention);
-            clearReturnFallbackTimeout();
-        });
-    });
-
-    createEffect(() => {
-        if (urlRewriteAnnotationsActive()) return;
-
-        if (step() !== URL_REWRITE_ANNOTATION_STEP) {
-            clearReturnFallbackTimeout();
-            if (shouldWaitForRepositoryReturn && !hasPageLostAttentionAfterClone && isPageActive()) {
-                shouldWaitForRepositoryReturn = false;
-            }
-            return;
-        }
-
-        if (shouldWaitForRepositoryReturn) {
-            activateAfterRepositoryReturn();
-            return;
-        }
-
-        activateUrlRewriteAnnotations();
-    });
-
-    return {
-        urlRewriteAnnotationsActive,
-        waitForRepositoryReturn,
-    };
-}
-
 type StepContentProps = {
     urlRewriteAnnotationsActive: boolean;
 };
@@ -209,6 +86,14 @@ export default function IntegrateGithubModal(props: { open: boolean; onOpenChang
         <Dialog open={props.open} onOpenChange={props.onOpenChange}>
             {/* <Dialog.Trigger>{props.children}</Dialog.Trigger> */}
             <Dialog.Portal>
+                <Dialog.Overlay
+                    class={clsx(
+                        "fixed inset-0 z-50 bg-white",
+                        "motion-duration-250",
+                        "data-expanded:motion-opacity-in-0 data-expanded:motion-ease-out",
+                        "data-closed:motion-opacity-out-0 data-closed:motion-ease-out data-closed:motion-delay-100",
+                    )}
+                />
                 <Dialog.Overlay
                     class={clsx(
                         "fixed inset-0 z-50 bg-black/25",
@@ -246,10 +131,13 @@ function Onboarding() {
     const videoPresence = createPresence(() => (transition.visibleSection() === "intro" ? undefined : true), {
         transitionDuration: STEP_TRANSITION_DURATION_MS,
     });
-    const { urlRewriteAnnotationsActive, waitForRepositoryReturn } = createUrlRewriteAnnotationState(step);
+    const urlRewriteActivation = createReturnAwareActivation(() => step() === URL_REWRITE_ANNOTATION_STEP, {
+        fallbackMs: URL_REWRITE_RETURN_FALLBACK_MS,
+    });
+    const shouldPauseUrlRewriteVideo = () => step() === URL_REWRITE_ANNOTATION_STEP && !urlRewriteActivation.isActive();
 
     const openTemplateRepository = async () => {
-        waitForRepositoryReturn();
+        urlRewriteActivation.deferNextActivationUntilReturn();
         window.open(TEMPLATE_URL, "_blank");
         await new Promise((resolve) => setTimeout(resolve, 100));
         incrementStep();
@@ -292,7 +180,7 @@ function Onboarding() {
                         // step() === 0 && "translate-y-5 opacity-20 blur-[1px]",
                     )}
                 >
-                    <IntegrateGithubVideoGuide step={step()} />
+                    <IntegrateGithubVideoGuide step={step()} paused={shouldPauseUrlRewriteVideo()} />
                 </div>
             </Show>
 
@@ -316,7 +204,7 @@ function Onboarding() {
                 >
                     <Dynamic
                         component={STEP_CONTENT[transition.visibleStep()] ?? DoneStepContent}
-                        urlRewriteAnnotationsActive={urlRewriteAnnotationsActive()}
+                        urlRewriteAnnotationsActive={urlRewriteActivation.isActive()}
                     />
                 </div>
 

@@ -37,7 +37,7 @@ const STEP_CONFIG: StepConfig[] = [
 const NORMAL_RATE = 1;
 const TIME_EPSILON = 0.04;
 
-export default function IntegrateGithubVideoGuide(props: { step: number }) {
+export default function IntegrateGithubVideoGuide(props: { step: number; paused?: boolean }) {
     let videoRef: HTMLVideoElement | undefined;
     let reachedEnd = false;
     let canPlayCurrentStep = true;
@@ -49,6 +49,7 @@ export default function IntegrateGithubVideoGuide(props: { step: number }) {
     const getStepStart = () => getStepConfig().start ?? 0;
     const getStepEnd = () => getStepConfig().end ?? Infinity;
     const isPausedStep = () => !!getStepConfig().paused;
+    const isExternallyPaused = () => props.paused ?? false;
     const getStepPlayDelayMs = () => getStepConfig().playDelayMs ?? 0;
     const getZoomClass = () => {
         const step = getStepConfig();
@@ -92,7 +93,7 @@ export default function IntegrateGithubVideoGuide(props: { step: number }) {
             return;
         }
 
-        if (isPausedStep()) {
+        if (isPausedStep() || isExternallyPaused()) {
             video.pause();
             updateCurrentTime();
             return;
@@ -162,15 +163,16 @@ export default function IntegrateGithubVideoGuide(props: { step: number }) {
     });
 
     createEffect(() => {
+        const externallyPaused = isExternallyPaused();
         props.step;
         if (!videoRef) return;
         const start = getStepStart();
         const playDelayMs = getStepPlayDelayMs();
 
         clearPlaybackDelayTimeout();
-        canPlayCurrentStep = playDelayMs <= 0;
+        canPlayCurrentStep = !externallyPaused && playDelayMs <= 0;
 
-        if (playDelayMs > 0) {
+        if (!externallyPaused && playDelayMs > 0) {
             playbackDelayTimeout = setTimeout(() => {
                 canPlayCurrentStep = true;
                 syncPlayback();
@@ -190,7 +192,7 @@ export default function IntegrateGithubVideoGuide(props: { step: number }) {
         }
         videoRef.currentTime = start;
         updateCurrentTime();
-        if (isPausedStep() || !canPlayCurrentStep) {
+        if (isPausedStep() || externallyPaused || !canPlayCurrentStep) {
             videoRef.pause();
             return;
         }
