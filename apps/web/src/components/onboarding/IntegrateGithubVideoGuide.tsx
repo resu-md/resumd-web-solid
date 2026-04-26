@@ -1,7 +1,7 @@
 import styles from "./IntegrateGithubModal.module.css";
 import { createEffect, createSignal, onCleanup, onMount } from "solid-js";
 import clsx from "clsx";
-import cloneRepositoryVideo from "./assets/clone-repository-video.mov";
+import cloneRepositoryVideo from "./assets/clone-repository-video.mp4";
 
 type StepConfig = {
     start: number;
@@ -20,18 +20,37 @@ const STEP_CONFIG: StepConfig[] = [
     { start: 0, end: 0, paused: true, zoomClass: styles.zoomRest },
     {
         start: 0,
-        end: 11.06,
+        end: 11.46,
         playDelayMs: 1000,
         zoomClass: styles.zoomRest,
         zoomSections: [
-            { start: 0, end: 0.45, zoomClass: styles.zoomRest },
-            { start: 0.45, end: 2.41, zoomClass: styles.zoomTopRight },
-            { start: 2.41, end: 6.52, zoomClass: styles.zoomRest },
-            { start: 6.52, end: 11.06, zoomClass: styles.zoomBottomRight },
+            { start: 0, end: 0.01, zoomClass: styles.zoomRest },
+            { start: 0.01, end: 2.35, zoomClass: styles.zoomTopRight },
+            { start: 2.35, end: 6.27, zoomClass: styles.zoomRest },
+            { start: 6.27, end: 9.37, zoomClass: styles.zoomBottomRight },
+            { start: 9.37, end: Infinity, zoomClass: styles.zoomRest },
         ],
-    }, // step 1 (merged 1-3)
-    { start: 11.06, end: Infinity, zoomClass: styles.zoomAdjustLarge },
-    { start: Infinity, end: Infinity, zoomClass: styles.zoomAdjustLarger },
+    },
+    {
+        start: 11.46,
+        end: 17,
+        zoomClass: styles.zoomCenterClose,
+        zoomSections: [
+            { start: 11.45, end: 16, zoomClass: styles.zoomCenterClose },
+            { start: 16, end: 17, zoomClass: styles.zoomAdjustLarger },
+        ],
+    },
+    {
+        start: 17,
+        end: Infinity,
+        zoomClass: styles.zoomAdjustLarger,
+        zoomSections: [
+            { start: 17, end: 22, zoomClass: styles.zoomAdjustLarger },
+            { start: 22, end: 29, zoomClass: styles.zoomCenter },
+            { start: 29, end: Infinity, zoomClass: styles.zoomAdjustLarger },
+        ],
+    },
+    { start: Infinity, end: Infinity, paused: true, zoomClass: styles.zoomRest },
 ];
 
 const NORMAL_RATE = 1;
@@ -202,7 +221,7 @@ export default function IntegrateGithubVideoGuide(props: { step: number; paused?
     return (
         <div class={clsx("flex flex-col", styles.videoFrame, getZoomClass())}>
             <div class="ring-gray-4 bg-gray-6 shadow-proeminent rounded-t-xl p-1.5 pb-1 ring">
-                <div class={clsx("ring-gray-4 aspect-851/540 rounded-t-md ring", styles.videoViewport)}>
+                <div class={clsx("ring-gray-4 aspect-3024/1898 rounded-t-md ring", styles.videoViewport)}>
                     <video
                         ref={videoRef}
                         class="size-full"

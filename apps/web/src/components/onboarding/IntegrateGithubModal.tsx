@@ -151,9 +151,8 @@ function Onboarding() {
             <Show when={videoPresence.isMounted()}>
                 <div
                     class={clsx(
-                        "absolute z-0 size-full px-14 pt-12",
+                        "absolute z-0 size-full px-14 pt-9",
                         FADE_TRANSITION_CLASS,
-                        styles.modalDiagramContainer,
                         videoPresence.isVisible() ? "opacity-100" : "opacity-0",
                     )}
                 >
@@ -166,7 +165,7 @@ function Onboarding() {
                     "proeminent-button absolute right-0 bottom-0 left-0 z-5 h-[28%]",
                     FADE_TRANSITION_CLASS,
                     styles.backgroundMask,
-                    step() === MIDDLE_STEP_MIN && transition.presence.isVisible() ? "opacity-100" : "opacity-0",
+                    isMiddleStep(step()) && transition.presence.isVisible() ? "opacity-100" : "opacity-0",
                 )}
             />
 
