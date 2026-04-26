@@ -1,16 +1,15 @@
-import clsx from "clsx";
-import { createMemo, type Accessor, type Component, For, type JSX, Match, Show, Switch } from "solid-js";
-import { Dynamic } from "solid-js/web";
 import styles from "./IntegrateGithubModal.module.css";
-
+import { type Accessor, createMemo, For, type JSX, Match, Show, Switch } from "solid-js";
+import clsx from "clsx";
 import RoughAnnotation from "@/components/onboarding/RoughAnnotation";
 import { Dialog } from "@kobalte/core/dialog";
+import { createPresence } from "@solid-primitives/presence";
+import { useNavigate } from "@solidjs/router";
+import { CgChevronLeft, CgClose, CgUndo } from "solid-icons/cg";
 import { IoArrowUpRightBoxOutline } from "solid-icons/io";
+import { createReturnAwareActivation } from "./createReturnAwareActivation";
 import IntegrateGithubVideoGuide from "./IntegrateGithubVideoGuide";
 import { StepProvider, useStep } from "./useStep";
-import { createPresence } from "@solid-primitives/presence";
-import { CgChevronLeft, CgClose, CgUndo } from "solid-icons/cg";
-import { createReturnAwareActivation } from "./createReturnAwareActivation";
 
 const TEMPLATE_URL = "https://github.com/resumemarkdown/template-jakes-resume";
 const MAX_STEP = 4;
@@ -53,33 +52,6 @@ function createOnboardingTransition(step: Accessor<number>) {
         fadeClass,
     };
 }
-
-type StepContentProps = {
-    urlRewriteAnnotationsActive: boolean;
-};
-
-const STEP_CONTENT: Record<number, Component<StepContentProps>> = {
-    0: IntroStepContent,
-    1: CloneTemplateStepContent,
-    2: RepositoryUrlStepContent,
-    3: AuthorizeRepositoryStepContent,
-    [MAX_STEP]: DoneStepContent,
-};
-
-type BottomActionsProps = {
-    step: number;
-    visibleGuideStep: number;
-    setStep: (step: number) => void;
-    incrementStep: () => void;
-    decrementStep: () => void;
-    openTemplateRepository: () => void | Promise<void>;
-};
-
-const SECTION_ACTIONS: Record<OnboardingSection, Component<BottomActionsProps>> = {
-    intro: IntroActions,
-    guide: GuideActions,
-    done: DoneActions,
-};
 
 export default function IntegrateGithubModal(props: { open: boolean; onOpenChange: (open: boolean) => void }) {
     return (
@@ -178,7 +150,6 @@ function Onboarding() {
                         FADE_TRANSITION_CLASS,
                         styles.modalDiagramContainer,
                         videoPresence.isVisible() ? "opacity-100" : "opacity-0",
-                        // step() === 0 && "translate-y-5 opacity-20 blur-[1px]",
                     )}
                 >
                     <IntegrateGithubVideoGuide step={step()} paused={shouldPauseUrlRewriteVideo()} />
@@ -203,22 +174,37 @@ function Onboarding() {
                         transition.fadeClass(),
                     )}
                 >
-                    <Dynamic
-                        component={STEP_CONTENT[transition.visibleStep()] ?? DoneStepContent}
-                        urlRewriteAnnotationsActive={urlRewriteActivation.isActive()}
-                    />
+                    <Switch fallback={<DoneStepContent />}>
+                        <Match when={transition.visibleStep() === 0}>
+                            <IntroStepContent />
+                        </Match>
+                        <Match when={transition.visibleStep() === 1}>
+                            <CloneTemplateStepContent />
+                        </Match>
+                        <Match when={transition.visibleStep() === 2}>
+                            <RepositoryUrlStepContent urlRewriteAnnotationsActive={urlRewriteActivation.isActive()} />
+                        </Match>
+                        <Match when={transition.visibleStep() === 3}>
+                            <AuthorizeRepositoryStepContent />
+                        </Match>
+                    </Switch>
                 </div>
 
                 <div class={clsx("mt-3 mb-5 flex w-full items-center gap-3", transition.fadeClass())}>
-                    <Dynamic
-                        component={SECTION_ACTIONS[transition.visibleSection()]}
-                        step={step()}
-                        visibleGuideStep={transition.visibleGuideStep()}
-                        setStep={setStep}
-                        incrementStep={incrementStep}
-                        decrementStep={decrementStep}
-                        openTemplateRepository={openTemplateRepository}
-                    />
+                    <Switch>
+                        <Match when={transition.visibleSection() === "intro"}>
+                            <IntroActions />
+                        </Match>
+                        <Match when={transition.visibleSection() === "guide"}>
+                            <GuideActions
+                                visibleGuideStep={transition.visibleGuideStep()}
+                                onOpenTemplateRepository={openTemplateRepository}
+                            />
+                        </Match>
+                        <Match when={transition.visibleSection() === "done"}>
+                            <DoneActions />
+                        </Match>
+                    </Switch>
                 </div>
             </div>
         </>
@@ -228,12 +214,12 @@ function Onboarding() {
 function IntroStepContent() {
     return (
         <h2 class="text-center">
-            <span class="motion-opacity-in-[0%] motion-blur-in-[2px] motion-delay-100 motion-duration-700">First,</span>
-            <span class="motion-opacity-in-[0%] motion-blur-in-[2px] motion-delay-900 motion-duration-800">
+            <span class="motion-opacity-in-[0%] motion-blur-in-[2px] motion-delay-400 motion-duration-700">First,</span>
+            <span class="motion-opacity-in-[0%] motion-blur-in-[2px] motion-delay-1300 motion-duration-800">
                 {" "}
                 you will need to create a repository{" "}
             </span>
-            <span class="motion-opacity-in-[0%] motion-blur-in-[2px] motion-delay-1800 motion-duration-800">
+            <span class="motion-opacity-in-[0%] motion-blur-in-[2px] motion-delay-2200 motion-duration-800">
                 for your resume
             </span>
         </h2>
@@ -253,7 +239,7 @@ function CloneTemplateStepContent() {
     );
 }
 
-function RepositoryUrlStepContent(props: StepContentProps) {
+function RepositoryUrlStepContent(props: { urlRewriteAnnotationsActive: boolean }) {
     return (
         <h2 class="text-center text-balance">
             Now, go to your repository, and replace{" "}
@@ -342,15 +328,19 @@ function DoneStepContent() {
     );
 }
 
-function IntroActions(props: BottomActionsProps) {
+function IntroActions() {
+    const { incrementStep } = useStep();
+
     return (
-        <div class="motion-opacity-in motion-delay-2000 motion-duration-1600 motion-ease-linear flex w-full justify-center">
-            <Button onClick={props.incrementStep}>Continue</Button>
+        <div class="motion-opacity-in motion-delay-2300 motion-duration-1600 motion-ease-linear flex w-full justify-center">
+            <Button onClick={incrementStep}>Continue</Button>
         </div>
     );
 }
 
-function GuideActions(props: BottomActionsProps) {
+function GuideActions(props: { visibleGuideStep: number; onOpenTemplateRepository: () => void }) {
+    const { step, setStep, incrementStep } = useStep();
+
     return (
         <div class="flex w-full">
             <div class="flex-[1_1_0%]"></div>
@@ -361,11 +351,11 @@ function GuideActions(props: BottomActionsProps) {
                         <button
                             class={clsx(
                                 "hit-area-1 size-1.75 cursor-pointer rounded-full",
-                                props.step === indicatorStep
+                                step() === indicatorStep
                                     ? "bg-fill-primary w-4.5"
                                     : "bg-fill-tertiary hover:bg-fill-primary transition-colors",
                             )}
-                            onClick={() => props.setStep(indicatorStep)}
+                            onClick={() => setStep(indicatorStep)}
                         />
                     )}
                 </For>
@@ -374,9 +364,7 @@ function GuideActions(props: BottomActionsProps) {
             <div class="flex flex-[1_1_0%] justify-end">
                 <Button
                     onClick={() =>
-                        props.visibleGuideStep === MIDDLE_STEP_MIN
-                            ? props.openTemplateRepository()
-                            : props.incrementStep()
+                        props.visibleGuideStep === MIDDLE_STEP_MIN ? props.onOpenTemplateRepository() : incrementStep()
                     }
                 >
                     <Show when={props.visibleGuideStep === MIDDLE_STEP_MIN} fallback={<i>Done that</i>}>
@@ -390,18 +378,21 @@ function GuideActions(props: BottomActionsProps) {
     );
 }
 
-function DoneActions(props: BottomActionsProps) {
+function DoneActions() {
+    const navigate = useNavigate();
+    const { setStep } = useStep();
+
     return (
         <div class="flex w-full">
             <div class="flex-[1_1_0%]">
                 <button
                     class="text-label-tertiary hover:text-label-secondary motion-opacity-in motion-delay-1200 motion-duration-300 h-8 cursor-pointer rounded-full px-3 text-sm transition-colors duration-100 select-none"
-                    onClick={() => props.setStep(0)}
+                    onClick={() => setStep(0)}
                 >
                     Restart guide
                 </button>
             </div>
-            <Button onClick={props.incrementStep}>Go to app</Button>
+            <Button onClick={() => navigate("/manage")}>Go to app</Button>
             <div class="flex-[1_1_0%]"></div>
         </div>
     );
