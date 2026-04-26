@@ -10,6 +10,7 @@ import { IoArrowUpRightBoxOutline } from "solid-icons/io";
 import { createReturnAwareActivation } from "./createReturnAwareActivation";
 import IntegrateGithubVideoGuide from "./IntegrateGithubVideoGuide";
 import { StepProvider, useStep } from "./useStep";
+import WithTooltip from "@/components/_ui/WithTooltip";
 
 const TEMPLATE_URL = "https://github.com/resumemarkdown/template-jakes-resume";
 const MAX_STEP = 4;
@@ -120,22 +121,26 @@ function Onboarding() {
         <>
             <Switch>
                 <Match when={transition.visibleStep() > 0 && transition.visibleStep() < MAX_STEP}>
-                    <button
+                    <WithTooltip
+                        as="button"
                         class={clsx(TOP_BUTTON_CLASS, "top-3.75 left-3.75", transition.fadeClass())}
                         tabindex={-1}
                         onClick={decrementStep}
+                        tooltip="Prev"
                     >
                         <CgChevronLeft class="text-label-tertiary size-4" />
-                    </button>
+                    </WithTooltip>
                 </Match>
                 <Match when={transition.visibleStep() === MAX_STEP}>
-                    <button
+                    <WithTooltip
+                        as="button"
                         class={clsx(TOP_BUTTON_CLASS, "top-3.75 left-3.75", transition.fadeClass())}
                         tabindex={-1}
                         onClick={() => setStep(0)}
+                        tooltip="Restart guide"
                     >
                         <CgUndo class="text-label-tertiary size-4" />
-                    </button>
+                    </WithTooltip>
                 </Match>
             </Switch>
 
@@ -380,17 +385,17 @@ function GuideActions(props: { visibleGuideStep: number; onOpenTemplateRepositor
 
 function DoneActions() {
     const navigate = useNavigate();
-    const { setStep } = useStep();
+    // const { setStep } = useStep();
 
     return (
         <div class="flex w-full">
             <div class="flex-[1_1_0%]">
-                <button
+                {/* <button
                     class="text-label-tertiary hover:text-label-secondary motion-opacity-in motion-delay-1200 motion-duration-300 h-8 cursor-pointer rounded-full px-3 text-sm transition-colors duration-100 select-none"
                     onClick={() => setStep(0)}
                 >
                     Restart guide
-                </button>
+                </button> */}
             </div>
             <Button onClick={() => navigate("/manage")}>Go to app</Button>
             <div class="flex-[1_1_0%]"></div>
