@@ -10,6 +10,8 @@ import {
     onMount,
     type JSX,
     Show,
+    Switch,
+    Match,
 } from "solid-js";
 import { Dynamic } from "solid-js/web";
 import styles from "./IntegrateGithubModal.module.css";
@@ -20,7 +22,7 @@ import { IoArrowUpRightBoxOutline } from "solid-icons/io";
 import IntegrateGithubVideoGuide from "./IntegrateGithubVideoGuide";
 import { StepProvider, useStep } from "./useStep";
 import { createPresence } from "@solid-primitives/presence";
-import { CgClose } from "solid-icons/cg";
+import { CgChevronLeft, CgClose, CgUndo } from "solid-icons/cg";
 
 const TEMPLATE_URL = "https://github.com/resumemarkdown/template-jakes-resume";
 const MAX_STEP = 4;
@@ -30,7 +32,6 @@ const MIDDLE_STEP_MIN = 1;
 const MIDDLE_STEP_MAX = MAX_STEP - 1;
 const MIDDLE_INDICATOR_STEPS = [1, 2, 3] as const;
 const STEP_TRANSITION_DURATION_MS = 300;
-const FADE_TRANSITION_CLASS = "transition-opacity duration-300 ease-out";
 
 type OnboardingSection = "intro" | "guide" | "done";
 
@@ -203,28 +204,41 @@ const SECTION_ACTIONS: Record<OnboardingSection, Component<BottomActionsProps>> 
     done: DoneActions,
 };
 
-export default function IntegrateGithubModal() {
+export default function IntegrateGithubModal(props: { open: boolean; onOpenChange: (open: boolean) => void }) {
     return (
-        <StepProvider minStep={0} maxStep={MAX_STEP}>
-            <IntegrateGithubModalContent />
-        </StepProvider>
-    );
-}
-
-export function IntegrateGithubModalContent() {
-    return (
-        <Dialog open={true}>
+        <Dialog open={props.open} onOpenChange={props.onOpenChange}>
+            {/* <Dialog.Trigger>{props.children}</Dialog.Trigger> */}
             <Dialog.Portal>
-                <Dialog.Overlay class="fixed inset-0 z-50 bg-black/40 backdrop-blur-sm" />
+                <Dialog.Overlay
+                    class={clsx(
+                        "fixed inset-0 z-50 bg-black/25",
+                        "motion-duration-250",
+                        "data-expanded:motion-opacity-in-0 data-expanded:motion-ease-out",
+                        "data-closed:motion-opacity-out-0 data-closed:motion-ease-out data-closed:motion-delay-100",
+                    )}
+                />
                 <div class="fixed inset-0 z-50 flex items-center justify-center">
-                    <Dialog.Content class="proeminent-button relative flex aspect-16/13 w-170 flex-col overflow-hidden rounded-3xl shadow-xl outline-none">
-                        <Onboarding />
+                    <Dialog.Content
+                        class={clsx(
+                            "proeminent-button relative flex aspect-16/13 w-170 flex-col overflow-hidden rounded-3xl shadow-xl outline-none",
+                            "motion-duration-300",
+                            "data-expanded:motion-scale-in-98 data-expanded:motion-opacity-in-0 data-expanded:motion-ease-out",
+                            "data-closed:motion-scale-out-98 data-closed:motion-opacity-out-0 data-closed:motion-ease-in",
+                        )}
+                    >
+                        <StepProvider minStep={0} maxStep={MAX_STEP}>
+                            <Onboarding />
+                        </StepProvider>
                     </Dialog.Content>
                 </div>
             </Dialog.Portal>
         </Dialog>
     );
 }
+
+const FADE_TRANSITION_CLASS = "transition-opacity duration-300 ease-out";
+const TOP_BUTTON_CLASS =
+    "bg-system-tertiary/75 hit-area-0.5 absolute z-20 w-fit cursor-pointer rounded-full p-0.75 backdrop-blur-md";
 
 function Onboarding() {
     const { step, setStep, incrementStep, decrementStep } = useStep();
@@ -243,13 +257,28 @@ function Onboarding() {
 
     return (
         <>
-            <Dialog.CloseButton
-                class={clsx(
-                    "bg-system-tertiary/75 hit-area-0.5 absolute top-3.25 right-3.25 z-20 w-fit cursor-pointer rounded-full p-0.75",
-                    "motion-opacity-in motion-delay-2000 motion-duration-1600 motion-ease-linear",
-                )}
-                tabindex={-1}
-            >
+            <Switch>
+                <Match when={transition.visibleStep() > 0 && transition.visibleStep() < MAX_STEP}>
+                    <button
+                        class={clsx(TOP_BUTTON_CLASS, "top-3.75 left-3.75", transition.fadeClass())}
+                        tabindex={-1}
+                        onClick={decrementStep}
+                    >
+                        <CgChevronLeft class="text-label-tertiary size-4" />
+                    </button>
+                </Match>
+                <Match when={transition.visibleStep() === MAX_STEP}>
+                    <button
+                        class={clsx(TOP_BUTTON_CLASS, "top-3.75 left-3.75", transition.fadeClass())}
+                        tabindex={-1}
+                        onClick={() => setStep(0)}
+                    >
+                        <CgUndo class="text-label-tertiary size-4" />
+                    </button>
+                </Match>
+            </Switch>
+
+            <Dialog.CloseButton class={clsx(TOP_BUTTON_CLASS, "top-3.75 right-3.75")} tabindex={-1}>
                 <CgClose class="text-label-tertiary size-4" />
             </Dialog.CloseButton>
 
@@ -435,16 +464,7 @@ function IntroActions(props: BottomActionsProps) {
 function GuideActions(props: BottomActionsProps) {
     return (
         <div class="flex w-full">
-            <div class="flex-[1_1_0%]">
-                <Show when={props.step !== MIDDLE_STEP_MIN}>
-                    <button
-                        class="text-label-tertiary hover:text-label-secondary animate-fade-in cursor-pointer rounded-full px-3 text-sm transition-colors duration-100 select-none"
-                        onClick={props.decrementStep}
-                    >
-                        Prev
-                    </button>
-                </Show>
-            </div>
+            <div class="flex-[1_1_0%]"></div>
 
             <div class="flex items-center justify-center gap-1.5">
                 <For each={MIDDLE_INDICATOR_STEPS}>
