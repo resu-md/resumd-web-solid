@@ -1,5 +1,5 @@
 import styles from "./IntegrateGithubModal.module.css";
-import { type Accessor, createMemo, For, type JSX, Match, Show, Switch } from "solid-js";
+import { type Accessor, createMemo, For, type JSX, Match, Show, splitProps, Switch } from "solid-js";
 import clsx from "clsx";
 import RoughAnnotation from "@/components/onboarding/RoughAnnotation";
 import { Dialog } from "@kobalte/core/dialog";
@@ -61,7 +61,7 @@ export default function IntegrateGithubModal(props: { open: boolean; onOpenChang
             <Dialog.Portal>
                 <Dialog.Overlay
                     class={clsx(
-                        "fixed inset-0 z-50 bg-white",
+                        "dark:bg-system-secondary fixed inset-0 z-50 bg-white",
                         "motion-duration-250",
                         "data-expanded:motion-opacity-in-0 data-expanded:motion-ease-out",
                         "data-closed:motion-opacity-out-0 data-closed:motion-ease-out data-closed:motion-delay-100",
@@ -69,7 +69,7 @@ export default function IntegrateGithubModal(props: { open: boolean; onOpenChang
                 />
                 <Dialog.Overlay
                     class={clsx(
-                        "fixed inset-0 z-50 bg-black/25",
+                        "fixed inset-0 z-50 bg-black/25 dark:bg-transparent",
                         "motion-duration-250",
                         "data-expanded:motion-opacity-in-0 data-expanded:motion-ease-out",
                         "data-closed:motion-opacity-out-0 data-closed:motion-ease-out data-closed:motion-delay-100",
@@ -100,7 +100,7 @@ const TOP_BUTTON_CLASS =
     "bg-system-tertiary/75 hit-area-0.5 absolute z-20 w-fit cursor-pointer rounded-full p-0.75 backdrop-blur-md";
 
 function Onboarding() {
-    const { step, setStep, incrementStep, decrementStep } = useStep();
+    const { step, setStep, incrementStep, decrementStep, stepVisited } = useStep();
     const transition = createOnboardingTransition(step);
     const videoPresence = createPresence(() => (transition.visibleSection() === "intro" ? undefined : true), {
         transitionDuration: STEP_TRANSITION_DURATION_MS,
@@ -123,7 +123,12 @@ function Onboarding() {
                 <Match when={transition.visibleStep() > 0 && transition.visibleStep() < MAX_STEP}>
                     <WithTooltip
                         as="button"
-                        class={clsx(TOP_BUTTON_CLASS, "top-3.75 left-3.75", transition.fadeClass())}
+                        class={clsx(
+                            TOP_BUTTON_CLASS,
+                            "top-3.75 left-3.75",
+                            transition.fadeClass(),
+                            !stepVisited(1) && "motion-opacity-in motion-delay-2800 motion-duration-1000",
+                        )}
                         tabindex={-1}
                         onClick={decrementStep}
                         tooltip="Prev"
@@ -152,21 +157,25 @@ function Onboarding() {
                 class={clsx(
                     "absolute z-0 size-full px-14 pt-9",
                     FADE_TRANSITION_CLASS,
-                    videoPresence.isVisible() ? "opacity-100" : "opacity-0",
+                    isMiddleStep(step()) && transition.presence.isVisible() && styles.videoBottomFade,
+                    videoPresence.isVisible() ? !stepVisited(1) && "motion-opacity-in motion-delay-2800" : "opacity-0",
                 )}
                 aria-hidden={transition.visibleSection() === "intro"}
             >
-                <IntegrateGithubVideoGuide step={step()} paused={shouldPauseUrlRewriteVideo()} />
+                <IntegrateGithubVideoGuide step={transition.visibleStep()} paused={shouldPauseUrlRewriteVideo()} />
             </div>
 
-            <div
-                class={clsx(
-                    "proeminent-button absolute right-0 bottom-0 left-0 z-5 h-[28%]",
-                    FADE_TRANSITION_CLASS,
-                    styles.backgroundMask,
-                    isMiddleStep(step()) && transition.presence.isVisible() ? "opacity-100" : "opacity-0",
-                )}
-            />
+            <Show when={transition.visibleStep() === 1}>
+                <div
+                    class={clsx(
+                        "pointer-events-auto absolute inset-x-8 z-15 cursor-text text-xl select-text",
+                        styles.cloneTemplateFloatingCopy,
+                        !stepVisited(1) && styles.cloneTemplateLeadIn,
+                    )}
+                >
+                    <CloneTemplateStepCopy />
+                </div>
+            </Show>
 
             <div class="z-10 flex w-full flex-1 flex-col items-center justify-end px-5 pt-5">
                 <div
@@ -182,7 +191,9 @@ function Onboarding() {
                             <IntroStepContent />
                         </Match>
                         <Match when={transition.visibleStep() === 1}>
-                            <CloneTemplateStepContent />
+                            <div class={styles.cloneTemplateFlowPlaceholder} aria-hidden="true">
+                                <CloneTemplateStepCopy />
+                            </div>
                         </Match>
                         <Match when={transition.visibleStep() === 2}>
                             <RepositoryUrlStepContent urlRewriteAnnotationsActive={urlRewriteActivation.isActive()} />
@@ -248,13 +259,20 @@ function IntroStepContent() {
     );
 }
 
-function CloneTemplateStepContent() {
+function CloneTemplateStepCopy() {
+    const { stepVisited } = useStep();
+
     return (
         <>
-            <h2 class="text-center text-balance duration-300 *:transition-opacity">
+            <h2 class={clsx("text-center text-balance duration-300", !stepVisited(1) && "motion-opacity-in-0")}>
                 Clone the template repository template to your GitHub account
             </h2>
-            <p class="text-label-secondary mt-1 text-center text-sm font-light">
+            <p
+                class={clsx(
+                    "text-label-secondary mt-1 text-center text-sm font-light",
+                    !stepVisited(1) && "motion-opacity-in motion-delay-1500 motion-duration-500",
+                )}
+            >
                 We recommend keeping its visibility private, but that is optional.
             </p>
         </>
@@ -366,13 +384,18 @@ function IntroActions() {
 }
 
 function GuideActions(props: { visibleGuideStep: number; onOpenTemplateRepository: () => void }) {
-    const { setStep, incrementStep } = useStep();
+    const { setStep, incrementStep, stepVisited } = useStep();
 
     return (
         <div class="flex w-full">
             <div class="flex-[1_1_0%]"></div>
 
-            <div class="flex items-center justify-center gap-1.5">
+            <div
+                class={clsx(
+                    "flex items-center justify-center gap-1.5",
+                    !stepVisited(1) && "motion-opacity-in motion-delay-2800",
+                )}
+            >
                 <For each={MIDDLE_INDICATOR_STEPS}>
                     {(indicatorStep) => (
                         <button
@@ -389,17 +412,21 @@ function GuideActions(props: { visibleGuideStep: number; onOpenTemplateRepositor
             </div>
 
             <div class="flex flex-[1_1_0%] justify-end">
-                <Button
-                    onClick={() =>
-                        props.visibleGuideStep === MIDDLE_STEP_MIN ? props.onOpenTemplateRepository() : incrementStep()
+                <Show
+                    when={props.visibleGuideStep === MIDDLE_STEP_MIN}
+                    fallback={
+                        <Button onClick={incrementStep}>
+                            <i>Done that</i>
+                        </Button>
                     }
                 >
-                    <Show when={props.visibleGuideStep === MIDDLE_STEP_MIN} fallback={<i>Done that</i>}>
-                        <>
-                            Clone the template <IoArrowUpRightBoxOutline class="ml-1.25 inline size-3" />
-                        </>
-                    </Show>
-                </Button>
+                    <Button
+                        onClick={props.onOpenTemplateRepository}
+                        class={clsx(!stepVisited(1) && "motion-opacity-in motion-delay-2800 motion-duration-1000")}
+                    >
+                        Clone the template <IoArrowUpRightBoxOutline class="ml-1.25 inline size-3" />
+                    </Button>
+                </Show>
             </div>
         </div>
     );
@@ -425,13 +452,18 @@ function DoneActions() {
     );
 }
 
-function Button(props: { children: JSX.Element } & JSX.HTMLAttributes<HTMLButtonElement>) {
+function Button(props: { children: JSX.Element; class?: string } & JSX.HTMLAttributes<HTMLButtonElement>) {
+    const [local, rest] = splitProps(props, ["children", "class"]);
+
     return (
         <button
-            class="button-blue flex h-8 cursor-pointer items-center rounded-full px-3 text-sm font-normal select-none"
-            {...props}
+            class={clsx(
+                "button-blue flex h-8 cursor-pointer items-center rounded-full px-3 text-sm font-normal select-none",
+                local.class,
+            )}
+            {...rest}
         >
-            {props.children}
+            {local.children}
         </button>
     );
 }

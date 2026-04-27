@@ -21,7 +21,7 @@ const STEP_CONFIG: StepConfig[] = [
     {
         start: 0,
         end: 11.46,
-        playDelayMs: 1000,
+        playDelayMs: 4200,
         zoomClass: styles.zoomRest,
         zoomSections: [
             { start: 0, end: 0.01, zoomClass: styles.zoomRest },
