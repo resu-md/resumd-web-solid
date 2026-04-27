@@ -215,14 +215,33 @@ function Onboarding() {
 }
 
 function IntroStepContent() {
+    const { stepVisited } = useStep();
+
     return (
         <h2 class="text-center">
-            <span class="motion-opacity-in-[0%] motion-blur-in-[2px] motion-delay-400 motion-duration-700">First,</span>
-            <span class="motion-opacity-in-[0%] motion-blur-in-[2px] motion-delay-1300 motion-duration-800">
+            <span
+                class={clsx(
+                    !stepVisited(0) &&
+                        "motion-opacity-in-[0%] motion-blur-in-[2px] motion-delay-400 motion-duration-700",
+                )}
+            >
+                First,
+            </span>
+            <span
+                class={clsx(
+                    !stepVisited(0) &&
+                        "motion-opacity-in-[0%] motion-blur-in-[2px] motion-delay-1300 motion-duration-800",
+                )}
+            >
                 {" "}
                 you will need to create a repository{" "}
             </span>
-            <span class="motion-opacity-in-[0%] motion-blur-in-[2px] motion-delay-2200 motion-duration-800">
+            <span
+                class={clsx(
+                    !stepVisited(0) &&
+                        "motion-opacity-in-[0%] motion-blur-in-[2px] motion-delay-2200 motion-duration-800",
+                )}
+            >
                 for your resume
             </span>
         </h2>
@@ -332,17 +351,22 @@ function DoneStepContent() {
 }
 
 function IntroActions() {
-    const { incrementStep } = useStep();
+    const { incrementStep, stepVisited } = useStep();
 
     return (
-        <div class="motion-opacity-in motion-delay-2300 motion-duration-1600 motion-ease-linear flex w-full justify-center">
+        <div
+            class={clsx(
+                "flex w-full justify-center",
+                !stepVisited(0) && "motion-opacity-in motion-delay-2300 motion-duration-1600 motion-ease-linear",
+            )}
+        >
             <Button onClick={incrementStep}>Continue</Button>
         </div>
     );
 }
 
 function GuideActions(props: { visibleGuideStep: number; onOpenTemplateRepository: () => void }) {
-    const { step, setStep, incrementStep } = useStep();
+    const { setStep, incrementStep } = useStep();
 
     return (
         <div class="flex w-full">
@@ -354,7 +378,7 @@ function GuideActions(props: { visibleGuideStep: number; onOpenTemplateRepositor
                         <button
                             class={clsx(
                                 "hit-area-1 size-1.75 cursor-pointer rounded-full",
-                                step() === indicatorStep
+                                props.visibleGuideStep === indicatorStep
                                     ? "bg-fill-primary w-4.5"
                                     : "bg-fill-tertiary hover:bg-fill-primary transition-colors",
                             )}
