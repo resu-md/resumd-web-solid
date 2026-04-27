@@ -4,15 +4,15 @@ import clsx from "clsx";
 import RoughAnnotation from "@/components/onboarding/RoughAnnotation";
 import { Dialog } from "@kobalte/core/dialog";
 import { createPresence } from "@solid-primitives/presence";
-import { useNavigate } from "@solidjs/router";
 import { CgChevronLeft, CgClose, CgUndo } from "solid-icons/cg";
 import { IoArrowUpRightBoxOutline } from "solid-icons/io";
 import { createReturnAwareActivation } from "./createReturnAwareActivation";
 import IntegrateGithubVideoGuide from "./IntegrateGithubVideoGuide";
 import { StepProvider, useStep } from "./useStep";
 import WithTooltip from "@/components/_ui/WithTooltip";
+import { useGithubAuth } from "@/contexts/github/GithubContext";
 
-const TEMPLATE_URL = "https://github.com/resumemarkdown/template-jakes-resume";
+export const TEMPLATE_URL = "https://github.com/resumemarkdown/template-jakes-resume";
 const MAX_STEP = 4;
 const URL_REWRITE_ANNOTATION_STEP = 2;
 const URL_REWRITE_RETURN_FALLBACK_MS = 600;
@@ -433,8 +433,7 @@ function GuideActions(props: { visibleGuideStep: number; onOpenTemplateRepositor
 }
 
 function DoneActions() {
-    const navigate = useNavigate();
-    // const { setStep } = useStep();
+    const { login } = useGithubAuth();
 
     return (
         <div class="flex w-full">
@@ -446,7 +445,7 @@ function DoneActions() {
                     Restart guide
                 </button> */}
             </div>
-            <Button onClick={() => navigate("/manage")}>Go to app</Button>
+            <Button onClick={() => login("/manage")}>Go to app</Button>
             <div class="flex-[1_1_0%]"></div>
         </div>
     );

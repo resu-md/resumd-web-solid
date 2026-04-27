@@ -1,6 +1,7 @@
 import { createEffect, For, Show } from "solid-js";
 import { Title } from "@solidjs/meta";
 import { formatDocumentTitle } from "@/lib/document-title";
+import { TEMPLATE_URL } from "@/components/onboarding/IntegrateGithubModal";
 // Contexts
 import { useGithubAuth } from "@/contexts/github/GithubContext";
 import { manageRepositories, useGithubRepositories } from "@/contexts/github/useGithubRepositories";
@@ -41,11 +42,11 @@ function ManageRepositoriesContent() {
                         when={repositories() === undefined || repositories()!.length > 0}
                         fallback={<NoRepositories />}
                     >
-                        <div class="mx-4 mb-5">
+                        <div class="mx-4 mb-3">
                             <h1 class="text-label-primary text-left text-2xl">Select a repository</h1>
                             <p class="text-label-secondary mt-2.5 text-left text-sm leading-relaxed tracking-wide hyphens-auto">
-                                You have granted Resumd access to the repositories bellow. Select one of the
-                                repositories or add/remove repositories by clicking "Manage repositories".
+                                You have granted access to the repositories bellow. Select one of the repositories or
+                                add/remove repositories by clicking "Manage repositories".
                             </p>
                         </div>
                         {/* <span class="text-label-tertiary mx-4 text-xs font-semibold">Authorized repositories</span> */}
@@ -116,18 +117,28 @@ function NoRepositories() {
 
     // TODO: Maybe add user avatar or information to this state, so user can know which account is logged in
     return (
-        <div class="mx-4">
-            <h1 class="text-label-primary text-left text-2xl">No repositories authorized</h1>
-            <p class="text-label-secondary mt-2.5 text-left text-sm leading-relaxed tracking-wide hyphens-auto">
-                It seems that you haven't authorized Resumd to access any repositories yet. Click the button bellow to
-                authorize a repository.
-            </p>
-            {/* <p class="text-label-secondary mt-2.5 text-left text-sm leading-relaxed tracking-wide hyphens-auto">
+        <>
+            <div class="mx-4 mb-3">
+                <h1 class="text-label-primary text-left text-2xl">No repositories authorized</h1>
+                <p class="text-label-secondary mt-2.5 text-left text-sm leading-relaxed tracking-wide hyphens-auto">
+                    It seems that you haven't granted access to any repository yet. Clone the{" "}
+                    <a
+                        href={TEMPLATE_URL}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        class="text-blue inline-block hover:underline"
+                    >
+                        template repository <FiExternalLink class="inline-block -translate-y-px" />
+                    </a>{" "}
+                    and add it by clicking "Add repositories" bellow.
+                </p>
+                {/* <p class="text-label-secondary mt-2.5 text-left text-sm leading-relaxed tracking-wide hyphens-auto">
                 We recommend creating a new repository for your resumes, but you can also select an existing repository
-                if you prefer. Resumd only needs read/write access to the selected repositories, so it won't have access
+                if you prefer. ResumeMarkdown only needs read/write access to the selected repositories, so it won't have access
                 to any other repositories in your account.
-            </p> */}
-            <div class="mt-5 flex flex-wrap gap-2">
+                </p> */}
+            </div>
+            <div class="mx-4 mt-5 flex flex-wrap gap-2">
                 <button class="proeminent-button grow rounded-full px-4 py-2 text-sm" onClick={manageRepositories}>
                     Add repositories
                 </button>
@@ -139,6 +150,6 @@ function NoRepositories() {
                     Logout
                 </button>
             </div>
-        </div>
+        </>
     );
 }
