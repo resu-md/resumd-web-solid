@@ -125,3 +125,8 @@
     --zoom-x: 0%;
     --zoom-y: -2%;
 }
+.zoomOut {
+    --zoom-scale: 0.9;
+    --zoom-x: 0%;
+    --zoom-y: -2%;
+}

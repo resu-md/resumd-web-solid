@@ -50,7 +50,7 @@ const STEP_CONFIG: StepConfig[] = [
             { start: 29, end: Infinity, zoomClass: styles.zoomAdjustLarger },
         ],
     },
-    { start: Infinity, end: Infinity, paused: true, zoomClass: styles.zoomRest },
+    { start: Infinity, end: Infinity, paused: true, zoomClass: styles.zoomOut },
 ];
 
 const NORMAL_RATE = 1;

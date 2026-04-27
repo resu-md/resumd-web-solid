@@ -402,8 +402,8 @@ function GuideActions(props: { visibleGuideStep: number; onOpenTemplateRepositor
                             class={clsx(
                                 "hit-area-1 size-1.75 cursor-pointer rounded-full",
                                 props.visibleGuideStep === indicatorStep
-                                    ? "bg-fill-primary w-4.5"
-                                    : "bg-fill-tertiary hover:bg-fill-primary transition-colors",
+                                    ? "bg-fill-primary dark:bg-label-secondary/60 w-4.5"
+                                    : "bg-fill-tertiary dark:bg-label-tertiary/40 dark:hover:bg-label-secondary/60 hover:bg-fill-primary transition-colors",
                             )}
                             onClick={() => setStep(indicatorStep)}
                         />
