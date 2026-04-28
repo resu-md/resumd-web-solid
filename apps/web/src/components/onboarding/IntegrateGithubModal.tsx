@@ -158,7 +158,9 @@ function Onboarding() {
                     "absolute z-0 size-full px-14 pt-9",
                     FADE_TRANSITION_CLASS,
                     isMiddleStep(step()) && transition.presence.isVisible() && styles.videoBottomFade,
-                    videoPresence.isVisible() ? !stepVisited(1) && "motion-opacity-in motion-delay-2800" : "opacity-0",
+                    videoPresence.isVisible()
+                        ? !stepVisited(1) && "motion-opacity-in motion-delay-2800 motion-duration-1000"
+                        : "opacity-0",
                 )}
                 aria-hidden={transition.visibleSection() === "intro"}
             >
@@ -264,13 +266,13 @@ function CloneTemplateStepCopy() {
 
     return (
         <>
-            <h2 class={clsx("text-center text-balance duration-300", !stepVisited(1) && "motion-opacity-in-0")}>
+            <h2 class={clsx("text-center text-balance", !stepVisited(1) && "motion-opacity-in motion-duration-1000")}>
                 Clone the template repository template to your GitHub account
             </h2>
             <p
                 class={clsx(
                     "text-label-secondary mt-1 text-center text-sm font-light",
-                    !stepVisited(1) && "motion-opacity-in motion-delay-1500 motion-duration-500",
+                    !stepVisited(1) && "motion-opacity-in motion-duration-1000",
                 )}
             >
                 We recommend keeping its visibility private, but that is optional.
@@ -348,18 +350,7 @@ function AuthorizeRepositoryStepContent() {
 function DoneStepContent() {
     return (
         <>
-            <h2>
-                <RoughAnnotation
-                    type="highlight"
-                    color="#00c1e887"
-                    delay={700}
-                    duration={800}
-                    strokeWidth={2}
-                    iterations={1}
-                >
-                    You are set!
-                </RoughAnnotation>
-            </h2>
+            <h2>You are set!</h2>
             <p class="text-label-secondary mt-1 text-sm font-light">
                 Make changes to the template resume and commit them. On every commit, a GitHub action will generate a
                 PDF from your resume files.
@@ -393,7 +384,7 @@ function GuideActions(props: { visibleGuideStep: number; onOpenTemplateRepositor
             <div
                 class={clsx(
                     "flex items-center justify-center gap-1.5",
-                    !stepVisited(1) && "motion-opacity-in motion-delay-2800",
+                    !stepVisited(1) && "motion-opacity-in motion-delay-2800 motion-duration-1000",
                 )}
             >
                 <For each={MIDDLE_INDICATOR_STEPS}>
