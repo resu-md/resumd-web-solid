@@ -17,6 +17,12 @@ Markdown-based resume editor. Create resumes with Markdown, styled with CSS, and
 
 [**Watch full demo video**](https://youtu.be/j4TswDhqAjY)
 
+## Why?
+
+- Fast and friction-free.
+- Privacy: Your data is only stored on your device and, optionally, on GitHub.
+- Your resume is code. Organize it with Git versining.
+
 ## Roadmap
 
 - [x] GitHub integration _(partial, missing in-app branch creation)_
