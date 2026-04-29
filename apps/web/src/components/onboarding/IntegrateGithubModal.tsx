@@ -164,7 +164,7 @@ function Onboarding() {
                 )}
                 aria-hidden={transition.visibleSection() === "intro"}
             >
-                <IntegrateGithubVideoGuide step={transition.visibleStep()} paused={shouldPauseUrlRewriteVideo()} />
+                <IntegrateGithubVideoGuide step={step()} paused={shouldPauseUrlRewriteVideo()} />
             </div>
 
             <Show when={transition.visibleStep() === 1}>

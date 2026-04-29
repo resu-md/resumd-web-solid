@@ -1,56 +1,52 @@
 import styles from "./IntegrateGithubModal.module.css";
-import { createEffect, createSignal, onCleanup, onMount } from "solid-js";
+import { createEffect, createSignal, onCleanup, onMount, on } from "solid-js";
 import clsx from "clsx";
 import cloneRepositoryVideo from "./assets/clone-repository-video.mp4";
 
-type StepConfig = {
+type ZoomSection = {
     start: number;
     end?: number;
-    paused?: boolean;
+    zoomClass: string;
+};
+
+type StepConfig = {
     playDelayMs?: number;
-    zoomClass?: string;
-    zoomSections?: {
-        start: number;
-        end?: number;
-        zoomClass: string;
-    }[];
+    paused?: boolean;
+    sections: ZoomSection[];
 };
 
 const STEP_CONFIG: StepConfig[] = [
-    { start: 0, end: 0, paused: true, zoomClass: styles.zoomRest },
     {
-        start: 0,
-        end: 11.46,
+        paused: true,
+        sections: [{ start: 0, zoomClass: styles.zoomRest }],
+    },
+    {
         playDelayMs: 4200,
-        zoomClass: styles.zoomRest,
-        zoomSections: [
+        sections: [
             { start: 0, end: 0.01, zoomClass: styles.zoomRest },
             { start: 0.01, end: 2.35, zoomClass: styles.zoomTopRight },
             { start: 2.35, end: 6.27, zoomClass: styles.zoomRest },
             { start: 6.27, end: 9.37, zoomClass: styles.zoomBottomRight },
-            { start: 9.37, end: Infinity, zoomClass: styles.zoomRest },
+            { start: 9.37, end: 11.46, zoomClass: styles.zoomRest },
         ],
     },
     {
-        start: 11.46,
-        end: 17,
-        zoomClass: styles.zoomCenterClose,
-        zoomSections: [
+        sections: [
             { start: 11.45, end: 16, zoomClass: styles.zoomCenterClose },
-            { start: 16, end: 17, zoomClass: styles.zoomAdjustLarger },
+            { start: 16, end: 17.1, zoomClass: styles.zoomAdjustLarger },
         ],
     },
     {
-        start: 17,
-        end: Infinity,
-        zoomClass: styles.zoomAdjustLarger,
-        zoomSections: [
-            { start: 17, end: 22, zoomClass: styles.zoomAdjustLarger },
+        sections: [
+            { start: 17.1, end: 22, zoomClass: styles.zoomAdjustLarger },
             { start: 22, end: 29, zoomClass: styles.zoomCenter },
-            { start: 29, end: Infinity, zoomClass: styles.zoomAdjustLarger },
+            { start: 29, zoomClass: styles.zoomAdjustLarger },
         ],
     },
-    { start: Infinity, end: Infinity, paused: true, zoomClass: styles.zoomOut },
+    {
+        paused: true,
+        sections: [{ start: Infinity, zoomClass: styles.zoomOut }],
+    },
 ];
 
 const NORMAL_RATE = 1;
@@ -63,24 +59,16 @@ export default function IntegrateGithubVideoGuide(props: { step: number; paused?
     let playbackDelayTimeout: ReturnType<typeof setTimeout> | undefined;
     const [currentTime, setCurrentTime] = createSignal(0);
 
-    const getStepConfig = () =>
-        STEP_CONFIG[Math.min(Math.max(props.step, 0), STEP_CONFIG.length - 1)] ?? STEP_CONFIG[0];
-    const getStepStart = () => getStepConfig().start ?? 0;
-    const getStepEnd = () => getStepConfig().end ?? Infinity;
-    const isPausedStep = () => !!getStepConfig().paused;
-    const isExternallyPaused = () => props.paused ?? false;
-    const getStepPlayDelayMs = () => getStepConfig().playDelayMs ?? 0;
+    const getStepConfig = (stepIndex: number) =>
+        STEP_CONFIG[Math.min(Math.max(stepIndex, 0), STEP_CONFIG.length - 1)] ?? STEP_CONFIG[0];
     const getZoomClass = () => {
-        const step = getStepConfig();
-        if (step.zoomSections?.length) {
-            const time = currentTime();
-            const match = step.zoomSections.find((section) => {
-                const sectionEnd = section.end ?? Infinity;
-                return time + TIME_EPSILON >= section.start && time <= sectionEnd + TIME_EPSILON;
-            });
-            if (match) return match.zoomClass;
-        }
-        return step.zoomClass ?? styles.zoomRest;
+        const step = getStepConfig(props.step);
+        const time = currentTime();
+        const match = step.sections.find((section) => {
+            const sectionEnd = section.end ?? Infinity;
+            return time + TIME_EPSILON >= section.start && time <= sectionEnd + TIME_EPSILON;
+        });
+        return match?.zoomClass ?? step.sections[0]?.zoomClass ?? styles.zoomRest;
     };
 
     const updateCurrentTime = () => {
@@ -98,8 +86,9 @@ export default function IntegrateGithubVideoGuide(props: { step: number; paused?
         const video = videoRef;
         if (!video) return;
 
-        const start = getStepStart();
-        const end = getStepEnd();
+        const step = getStepConfig(props.step);
+        const start = step.sections[0]?.start ?? 0;
+        const end = step.sections[step.sections.length - 1]?.end ?? Infinity;
         const time = video.currentTime;
 
         if (!Number.isFinite(start)) {
@@ -112,7 +101,7 @@ export default function IntegrateGithubVideoGuide(props: { step: number; paused?
             return;
         }
 
-        if (isPausedStep() || isExternallyPaused()) {
+        if (step.paused || props.paused) {
             video.pause();
             updateCurrentTime();
             return;
@@ -182,42 +171,79 @@ export default function IntegrateGithubVideoGuide(props: { step: number; paused?
         });
     });
 
-    createEffect(() => {
-        const externallyPaused = isExternallyPaused();
-        props.step;
-        if (!videoRef) return;
-        const start = getStepStart();
-        const playDelayMs = getStepPlayDelayMs();
+    createEffect(
+        on(
+            () => props.step,
+            (stepIndex) => {
+                if (!videoRef) return;
+                const step = getStepConfig(stepIndex);
+                const start = step.sections[0]?.start ?? 0;
+                const playDelayMs = step.playDelayMs ?? 0;
 
-        clearPlaybackDelayTimeout();
-        canPlayCurrentStep = !externallyPaused && playDelayMs <= 0;
+                clearPlaybackDelayTimeout();
+                canPlayCurrentStep = !props.paused && playDelayMs <= 0;
 
-        if (!externallyPaused && playDelayMs > 0) {
-            playbackDelayTimeout = setTimeout(() => {
-                canPlayCurrentStep = true;
+                if (!props.paused && playDelayMs > 0) {
+                    playbackDelayTimeout = setTimeout(() => {
+                        canPlayCurrentStep = true;
+                        syncPlayback();
+                    }, playDelayMs);
+                }
+
+                reachedEnd = false;
+                videoRef.playbackRate = NORMAL_RATE;
+
+                if (!Number.isFinite(start)) {
+                    if (Number.isFinite(videoRef.duration)) {
+                        videoRef.currentTime = videoRef.duration;
+                    }
+                    reachedEnd = true;
+                    videoRef.pause();
+                    updateCurrentTime();
+                    return;
+                }
+
+                videoRef.currentTime = start;
+                updateCurrentTime();
+
+                if (step.paused || props.paused || !canPlayCurrentStep) {
+                    videoRef.pause();
+                    return;
+                }
                 syncPlayback();
-            }, playDelayMs);
-        }
+            },
+            { defer: false },
+        ),
+    );
 
-        reachedEnd = false;
-        videoRef.playbackRate = NORMAL_RATE;
-        if (!Number.isFinite(start)) {
-            if (Number.isFinite(videoRef.duration)) {
-                videoRef.currentTime = videoRef.duration;
-            }
-            reachedEnd = true;
-            videoRef.pause();
-            updateCurrentTime();
-            return;
-        }
-        videoRef.currentTime = start;
-        updateCurrentTime();
-        if (isPausedStep() || externallyPaused || !canPlayCurrentStep) {
-            videoRef.pause();
-            return;
-        }
-        syncPlayback();
-    });
+    createEffect(
+        on(
+            () => props.paused,
+            (paused) => {
+                if (!videoRef) return;
+                if (paused) {
+                    clearPlaybackDelayTimeout();
+                    canPlayCurrentStep = false;
+                    videoRef.pause();
+                    updateCurrentTime();
+                } else {
+                    const step = getStepConfig(props.step);
+                    const playDelayMs = step.playDelayMs ?? 0;
+                    if (playDelayMs > 0 && !canPlayCurrentStep) {
+                        clearPlaybackDelayTimeout();
+                        playbackDelayTimeout = setTimeout(() => {
+                            canPlayCurrentStep = true;
+                            syncPlayback();
+                        }, playDelayMs);
+                    } else {
+                        canPlayCurrentStep = true;
+                        syncPlayback();
+                    }
+                }
+            },
+            { defer: true },
+        ),
+    );
 
     return (
         <div class={clsx("flex flex-col", styles.videoFrame, getZoomClass())}>
