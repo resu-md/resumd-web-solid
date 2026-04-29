@@ -32,7 +32,7 @@ export default function SaveOptionsButton(props: {
                                 <div class="mr-1.75 ml-px flex w-4 justify-center">
                                     <IoLogoGithub class="text-label-primary size-4" />
                                 </div>
-                                Push to Github
+                                Commit to Github
                             </DropdownMenu.Item>
                         </Show>
                         <DropdownMenu.Item
