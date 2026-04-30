@@ -1,6 +1,6 @@
 import { type JSXElement } from "solid-js";
 import { Route, Router } from "@solidjs/router";
-import { Meta, MetaProvider, Title } from "@solidjs/meta";
+import { MetaProvider, Title } from "@solidjs/meta";
 // Context
 import queryClient from "./lib/query-client";
 import { QueryClientProvider } from "@tanstack/solid-query";
@@ -18,10 +18,6 @@ export default function App() {
     return (
         <MetaProvider>
             <Title>Resumd</Title>
-            <Meta
-                name="description"
-                content="Markdown-based resume editor. Create resumes with Markdown, styled with CSS, and manage their versions in Github."
-            />
 
             <Router base={routerBase} root={ContextProviders}>
                 <Route component={GithubProvider}>
