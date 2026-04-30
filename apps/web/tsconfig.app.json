@@ -26,7 +26,6 @@
         "noUncheckedSideEffectImports": true,
 
         /* Path alises */
-        "baseUrl": ".",
         "paths": {
             "@/*": ["./src/*"],
             "@resumd/api/types": ["../api/src/types.ts"]
