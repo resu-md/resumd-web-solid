@@ -8,6 +8,7 @@ import { exportAsZip } from "@/lib/export-as-zip";
 // Contexts
 import { GithubResumeProvider, useGithubResume } from "@/contexts/github/GithubResumeContext";
 // Components
+import Loading from "@/components/_layout/Loading";
 import MonacoEditor from "@/components/editor/monaco-editor/MonacoEditor";
 import EditorShell from "@/components/editor/EditorShell";
 import ToolbarShell from "@/components/preview/toolbar/ToolbarShell";
@@ -33,6 +34,7 @@ export default function AuthenticatedEditorPage() {
 
     const returnToPath = () => `${location.pathname}${location.search}`;
     const loginGuardKey = () => SESSION_STORAGE_LOGIN_GUARD_KEY(returnToPath());
+
     const shouldRenderEditor = () => {
         if (!user()) return false;
         return selectedRepository() !== null;
@@ -76,14 +78,7 @@ export default function AuthenticatedEditorPage() {
         <Show
             when={shouldRenderEditor()}
             fallback={
-                <Show
-                    when={user() === null && loginBlocked()}
-                    fallback={
-                        <div class="text-label-secondary flex h-dvh w-dvw items-center justify-center gap-2">
-                            {redirectMessage()}
-                        </div>
-                    }
-                >
+                <Show when={user() === null && loginBlocked()} fallback={<Loading>{redirectMessage()}</Loading>}>
                     <LoginError
                         onRetry={() => {
                             setLoginBlocked(false);

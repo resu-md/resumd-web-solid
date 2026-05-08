@@ -1,5 +1,6 @@
 import { onMount } from "solid-js";
 import { useGithubAuth } from "@/contexts/github/GithubContext";
+import Loading from "@/components/_layout/Loading";
 
 export default function LogoutPage() {
     const { logout } = useGithubAuth();
@@ -15,5 +16,5 @@ export default function LogoutPage() {
         })();
     });
 
-    return <div class="text-label-secondary flex h-dvh w-dvw items-center justify-center gap-2">Signing out...</div>;
+    return <Loading>Signing out...</Loading>;
 }

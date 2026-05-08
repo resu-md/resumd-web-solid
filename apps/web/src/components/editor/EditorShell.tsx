@@ -1,5 +1,5 @@
 import { createSignal, type Accessor, type JSXElement } from "solid-js";
-import ResizablePane from "../layout/ResizablePane";
+import ResizablePane from "../_layout/ResizablePane";
 import Tabs from "./Tabs";
 
 export default function EditorShell(props: { tabs: string[]; children?: (activeTab: Accessor<string>) => JSXElement }) {

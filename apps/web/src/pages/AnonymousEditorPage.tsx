@@ -7,6 +7,7 @@ import { useGithubAuth } from "@/contexts/github/GithubContext";
 import { useGithubRepositories } from "@/contexts/github/useGithubRepositories";
 import { AnonymousResumeProvider, useAnonymousResume } from "@/contexts/AnonymousResumeContext";
 // Components
+import Loading from "@/components/_layout/Loading";
 import MonacoEditor from "@/components/editor/monaco-editor/MonacoEditor";
 import EditorShell from "@/components/editor/EditorShell";
 import Preview from "@/components/preview/Preview";
@@ -32,14 +33,7 @@ export default function AnonymousEditorPage() {
     });
 
     return (
-        <Show
-            when={user() === undefined || user() === null}
-            fallback={
-                <div class="text-label-secondary flex h-dvh w-dvw items-center justify-center gap-2">
-                    Redirecting...
-                </div>
-            }
-        >
+        <Show when={user() === undefined || user() === null} fallback={<Loading>Redirecting...</Loading>}>
             {/* User is loading (undefined) or is logged out (null) */}
             <AnonymousResumeProvider>
                 <AnonymousEditor />
